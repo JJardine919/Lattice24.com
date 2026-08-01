@@ -1,0 +1,289 @@
+<title>Detecting Sensor Drift Without a Reference — Lattice24</title>
+
+<style>
+  :root {
+    --ground: #F5F4F1;
+    --panel: #FFFFFF;
+    --ink: #16191B;
+    --ink-soft: #4C5559;
+    --ink-faint: #7C8688;
+    --rule: #DBD9D3;
+    --rule-soft: #EAE8E3;
+    --signal: #A9601A;
+    --signal-soft: #F0E2CE;
+    --good: #3F6B52;
+    --crit: #A33C33;
+    --measure: 68ch;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0E1113;
+      --panel: #14181A;
+      --ink: #E8E9E6;
+      --ink-soft: #A3AAAB;
+      --ink-faint: #6E7779;
+      --rule: #262C2E;
+      --rule-soft: #1C2123;
+      --signal: #E0A253;
+      --signal-soft: #2A2118;
+      --good: #7FB08F;
+      --crit: #D9736A;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0E1113; --panel: #14181A; --ink: #E8E9E6; --ink-soft: #A3AAAB;
+    --ink-faint: #6E7779; --rule: #262C2E; --rule-soft: #1C2123;
+    --signal: #E0A253; --signal-soft: #2A2118; --good: #7FB08F; --crit: #D9736A;
+  }
+  :root[data-theme="light"] {
+    --ground: #F5F4F1; --panel: #FFFFFF; --ink: #16191B; --ink-soft: #4C5559;
+    --ink-faint: #7C8688; --rule: #DBD9D3; --rule-soft: #EAE8E3;
+    --signal: #A9601A; --signal-soft: #F0E2CE; --good: #3F6B52; --crit: #A33C33;
+  }
+
+  * { box-sizing: border-box; }
+
+  .page {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: Charter, "Bitstream Charter", "Sitka Text", Cambria, Georgia, serif;
+    font-size: 17px;
+    line-height: 1.62;
+    padding: clamp(1.75rem, 5vw, 5rem) clamp(1.1rem, 5vw, 2rem) 5rem;
+    min-height: 100vh;
+  }
+  .wrap { max-width: var(--measure); margin: 0 auto; display: flex; flex-direction: column; gap: 2.75rem; }
+
+  .eyebrow {
+    font-family: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+    font-size: 0.66rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink-faint); margin: 0;
+  }
+
+  h1 {
+    font-family: "Helvetica Neue", Inter, system-ui, sans-serif;
+    font-size: clamp(1.85rem, 5vw, 2.7rem); line-height: 1.1; font-weight: 700;
+    letter-spacing: -0.021em; text-wrap: balance; margin: 0.5rem 0 0;
+  }
+  h2 {
+    font-family: "Helvetica Neue", Inter, system-ui, sans-serif;
+    font-size: 1.13rem; font-weight: 700; letter-spacing: -0.008em;
+    text-wrap: balance; margin: 0 0 0.15rem;
+    padding-top: 1.1rem; border-top: 1px solid var(--rule);
+  }
+  p { margin: 0; }
+  .lede { font-size: 1.09rem; color: var(--ink-soft); }
+  strong { font-weight: 700; color: var(--ink); }
+  section { display: flex; flex-direction: column; gap: 0.9rem; }
+
+  .byline {
+    font-family: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+    font-size: 0.73rem; color: var(--ink-faint); line-height: 1.75;
+    padding-bottom: 1.5rem; border-bottom: 2px solid var(--ink);
+  }
+
+  /* instrument readout — the worked example */
+  .readout {
+    background: var(--panel); border: 1px solid var(--rule);
+    border-left: 3px solid var(--signal);
+    padding: 1.3rem 1.4rem; display: flex; flex-direction: column; gap: 1rem;
+  }
+  .readout-head {
+    font-family: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+    font-size: 0.68rem; letter-spacing: 0.13em; text-transform: uppercase; color: var(--ink-faint);
+  }
+  .pair { display: flex; flex-wrap: wrap; gap: 1.75rem; }
+  .val { display: flex; flex-direction: column; gap: 0.15rem; }
+  .val .n {
+    font-family: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+    font-size: 1.85rem; font-weight: 600; font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em; line-height: 1;
+  }
+  .val .n.sig { color: var(--signal); }
+  .val .k { font-size: 0.79rem; color: var(--ink-soft); font-family: "Helvetica Neue", Inter, system-ui, sans-serif; }
+  .readout .note { font-size: 0.88rem; color: var(--ink-soft); }
+
+  .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.88rem; }
+  caption {
+    text-align: left; font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.66rem; letter-spacing: 0.13em; text-transform: uppercase;
+    color: var(--ink-faint); padding-bottom: 0.55rem;
+  }
+  th, td { text-align: left; padding: 0.5rem 0.85rem 0.5rem 0; border-bottom: 1px solid var(--rule-soft); }
+  th {
+    font-family: "Helvetica Neue", Inter, system-ui, sans-serif; font-size: 0.72rem;
+    font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+    color: var(--ink-faint); border-bottom: 1px solid var(--rule);
+  }
+  td.num, th.num {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-variant-numeric: tabular-nums; text-align: right; padding-right: 0;
+  }
+  td.tag { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.84rem; }
+  tr .hi { color: var(--signal); font-weight: 600; }
+
+  ul { margin: 0; padding-left: 1.15rem; display: flex; flex-direction: column; gap: 0.6rem; }
+  li::marker { color: var(--ink-faint); }
+
+  .steps { list-style: none; padding: 0; counter-reset: s; gap: 1rem; }
+  .steps li { counter-increment: s; display: grid; grid-template-columns: 1.9rem 1fr; gap: 0.75rem; align-items: start; }
+  .steps li::before {
+    content: counter(s, decimal-leading-zero);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.75rem;
+    color: var(--signal); padding-top: 0.28rem;
+  }
+
+  .flags { display: flex; flex-direction: column; gap: 0.55rem; }
+  .flag { display: grid; grid-template-columns: auto 1fr; gap: 0.7rem; align-items: baseline; font-size: 0.95rem; }
+  .flag .m {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.68rem;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--crit);
+  }
+
+  a { color: var(--signal); text-decoration-thickness: 1px; text-underline-offset: 2.5px; }
+  a:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
+
+  footer {
+    border-top: 2px solid var(--ink); padding-top: 1.4rem;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.73rem; color: var(--ink-faint); line-height: 1.85;
+  }
+  @media (max-width: 480px) { .val .n { font-size: 1.5rem; } }
+</style>
+
+<div class="page">
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">Lattice24 · Technical brief</p>
+    <h1>Detecting sensor drift without a reference</h1>
+  </header>
+
+  <p class="byline">
+    James Jardine · ORCID 0009-0004-9073-7192<br>
+    1 August 2026 · Prepared for oil &amp; gas operations
+  </p>
+
+  <section>
+    <h2>The problem</h2>
+    <p class="lede">A failed sensor alarms. A drifted sensor does not.</p>
+    <p>It reports a plausible wrong number, and the control room has no way to know. That is why
+    calibration runs on a schedule rather than on demand — nobody can tell which instrument has
+    moved until someone brings a reference to it. Between calibrations you are running on numbers
+    whose error is unknown and unbounded.</p>
+  </section>
+
+  <section>
+    <h2>What we do</h2>
+    <p>We read your existing sensor stream through a second, independent estimator and watch the
+    two readings separate. <strong>The disagreement tracks the sensor's true error — with no
+    reference instrument involved.</strong></p>
+
+    <div class="readout">
+      <p class="readout-head">Worked example · ethanol · month 3</p>
+      <div class="pair">
+        <div class="val">
+          <span class="n sig">1.808</span>
+          <span class="k">Disagreement — measured live, no reference</span>
+        </div>
+        <div class="val">
+          <span class="n">1.831</span>
+          <span class="k">True sensor error — measured after, against a calibrated reference</span>
+        </div>
+      </div>
+      <p class="note">The size of the failure was called correctly by a system that never saw the
+      reference.</p>
+    </div>
+
+    <div class="scroll">
+      <table>
+        <caption>36-month sensor degradation benchmark · 13,910 samples · 16 sensors · bootstrap CI</caption>
+        <thead>
+          <tr><th>Product</th><th class="num">r</th><th class="num">95% CI</th><th>Holds</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Ethylene</td><td class="num hi">+0.983</td><td class="num">+0.806 → +0.997</td><td>Yes</td></tr>
+          <tr><td>Ethanol</td><td class="num hi">+0.914</td><td class="num">+0.144 → +0.992</td><td>Yes</td></tr>
+          <tr><td>Acetone</td><td class="num hi">+0.789</td><td class="num">+0.425 → +0.947</td><td>Yes</td></tr>
+          <tr><td>Toluene</td><td class="num">+0.581</td><td class="num">−0.850 → +1.000</td><td>Too few points</td></tr>
+          <tr><td>Ammonia</td><td class="num">+0.100</td><td class="num">−0.684 → +0.902</td><td>No</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Three of five products hold, with intervals entirely above zero. Ammonia does not — an
+    earlier five-batch estimate of +0.562 did not survive testing across all ten batches and is
+    withdrawn here rather than quietly dropped.</p>
+  </section>
+
+  <section>
+    <h2>Why it works</h2>
+    <p>The second estimator does <strong>not</strong> need to be more accurate than your sensor.
+    It needs to fail <em>differently</em>. Two independent readings of the same process drift apart
+    in a way a single reading cannot reveal, and the size of the gap carries the information.</p>
+    <p>That is why the method needs no calibration gas, no reference cell and no downtime — only
+    the data you are already logging.</p>
+  </section>
+
+  <section>
+    <h2>What we are not claiming</h2>
+    <p>Stated plainly, because these were tested and did not hold.</p>
+    <div class="flags">
+      <div class="flag"><span class="m">Not</span><span>A more accurate sensor. On absolute concentration our best result is R² 0.451. We do not replace your instrument.</span></div>
+      <div class="flag"><span class="m">Not</span><span>Drift correction. A model trained on month 1 and applied at month 36 performs worse through our representation than through the raw channels.</span></div>
+      <div class="flag"><span class="m">Limit</span><span>Holds on three of five products tested. Ammonia fails outright. We do not yet know what distinguishes the products where it works.</span></div>
+      <div class="flag"><span class="m">Limit</span><span>Only ethylene is tightly bounded. Ethanol's interval runs +0.144 to +0.992 — positive, but not precisely located.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Evidence base</h2>
+    <p>The underlying engine has been run across 100 measurement domains and a blind random draw
+    of open scientific datasets, with all results — including failures — published under CC-BY-4.0.
+    Oil &amp; gas domains from that run, one unmodified pipeline, no per-domain tuning:</p>
+
+    <div class="scroll">
+      <table>
+        <caption>Signal against randomised surrogate</caption>
+        <thead>
+          <tr><th>Domain</th><th class="num">Channels</th><th class="num">Signal</th><th class="num">p</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="tag">Compressor station</td><td class="num">25</td><td class="num">23/25</td><td class="num">5.2e-06</td></tr>
+          <tr><td class="tag">Gas distribution</td><td class="num">24</td><td class="num">24/24</td><td class="num">1.2e-07</td></tr>
+          <tr><td class="tag">Drilling rig</td><td class="num">15</td><td class="num">14/15</td><td class="num">8.4e-03</td></tr>
+          <tr><td class="tag">Refinery unit</td><td class="num">8</td><td class="num">8/8</td><td class="num">7.8e-03</td></tr>
+          <tr><td class="tag">Pipeline pressure</td><td class="num">9</td><td class="num">8/9</td><td class="num">1.3e-01</td></tr>
+          <tr><td class="tag">Gas turbine</td><td class="num">11</td><td class="num">9/11</td><td class="num">8.3e-02</td></tr>
+          <tr><td class="tag">Wellhead</td><td class="num">10</td><td class="num">1/10</td><td class="num">3.9e-03</td></tr>
+          <tr><td class="tag">Pump bearing</td><td class="num">10</td><td class="num">0/10</td><td class="num">2.0e-03</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>Wellhead and pump bearing invert — their readings are far <em>more</em> regular than a
+    randomised surrogate. That is the signature of a tightly controlled or steady-load system, and
+    the direction of the inversion distinguishes a controlled process from an uncontrolled one.
+    Both are reported here rather than omitted.</p>
+  </section>
+
+  <section>
+    <h2>What a pilot looks like</h2>
+    <ul class="steps">
+      <li>You supply historical logs from one unit — six to twelve months, whatever you already archive. No new hardware, no site visit, no interruption.</li>
+      <li>We report, for each channel, whether it carries a readable signal and where the disagreement grows over the period.</li>
+      <li>You check our flagged dates against your own calibration and maintenance records.</li>
+    </ul>
+    <p>If the dates line up, the method works on your plant. If they do not, you have lost nothing
+    but a data export — and we will say so.</p>
+  </section>
+
+  <footer>
+    LATTICE24 · JAMES JARDINE · ORCID 0009-0004-9073-7192<br>
+    Concept DOI <a href="https://doi.org/10.5281/zenodo.21738214">10.5281/zenodo.21738214</a> ·
+    Engine <a href="https://doi.org/10.5281/zenodo.18918783">10.5281/zenodo.18918783</a><br>
+    All figures reproducible from published data. Methods, code and negative results in the record above.
+  </footer>
+
+</div>
+</div>
