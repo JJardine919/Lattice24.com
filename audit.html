@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Free Sensor Entropy Audit — runs in your browser</title>
+<meta name="description" content="Drop a CSV of sensor history. Get an entropy profile of every channel and which ones moved most across the period. Runs entirely in your browser — nothing is uploaded.">
+<style>
+  :root{--ink:#12201a;--ink2:#33463d;--paper:#f6f4ef;--card:#fff;--green:#1f7a4d;
+        --green-dk:#175c3a;--amber:#c8611a;--red:#b3341f;--line:#e2ded4;--steel:#5c6b63;
+        --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  @media (prefers-color-scheme:dark){:root{--ink:#e9e7e1;--ink2:#b3bdb7;--paper:#111613;
+        --card:#182019;--green:#4fbe86;--green-dk:#6ed3a0;--amber:#e0a35f;--red:#e2705a;
+        --line:#26302a;--steel:#8d9a92}}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       background:var(--paper);color:var(--ink);line-height:1.6;font-size:17px}
+  .wrap{max-width:960px;margin:0 auto;padding:0 22px}
+  header{border-bottom:1px solid var(--line);padding:16px 0}
+  .logo{font-weight:800;font-size:1.2rem;letter-spacing:.04em;text-decoration:none;color:var(--ink)}
+  .logo span{color:var(--green)}
+  .hero{padding:48px 0 24px}
+  .kicker{font-family:var(--mono);font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--green);margin-bottom:12px}
+  h1{font-size:clamp(1.8rem,4.4vw,2.6rem);line-height:1.15;letter-spacing:-.02em;margin-bottom:14px}
+  .lede{color:var(--ink2);max-width:46rem}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:24px;margin:24px 0}
+  .panel h2{font-size:1.05rem;margin-bottom:14px}
+  #drop{border:2px dashed var(--line);border-radius:12px;padding:52px 20px;text-align:center;
+        cursor:pointer;transition:.15s;background:var(--card)}
+  #drop:hover,#drop.over{border-color:var(--green);background:color-mix(in srgb,var(--green) 6%,var(--card))}
+  #drop .big{font-size:1.1rem;font-weight:600}
+  #drop .sm{font-size:.88rem;color:var(--steel);margin-top:6px}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin:18px 0}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}
+  .stat .n{font-family:var(--mono);font-size:1.6rem;font-weight:700;color:var(--green)}
+  .stat .l{font-size:.78rem;color:var(--steel);margin-top:4px}
+  table{border-collapse:collapse;width:100%;font-size:.9rem}
+  th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line)}
+  th{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;color:var(--steel)}
+  td.n{font-family:var(--mono);text-align:right;white-space:nowrap}
+  tr.flag td{background:color-mix(in srgb,var(--amber) 10%,transparent)}
+  .tag{font-family:var(--mono);font-size:.7rem;padding:2px 7px;border-radius:4px;white-space:nowrap}
+  .tag.f{background:var(--amber);color:#fff}
+  .tag.q{background:var(--red);color:#fff}
+  .tag.o{background:var(--steel);color:#fff}
+  .note{border-left:3px solid var(--amber);background:color-mix(in srgb,var(--amber) 8%,transparent);
+        padding:14px 16px;border-radius:0 6px 6px 0;margin:20px 0;font-size:.92rem}
+  .note b{color:var(--amber)}
+  .btn{display:inline-block;background:var(--green);color:#fff;padding:11px 20px;border-radius:7px;
+       text-decoration:none;font-weight:600;border:0;font-size:.96rem;cursor:pointer}
+  .btn:hover{background:var(--green-dk)}
+  .src{font-size:.8rem;color:var(--steel);margin-top:12px}
+  .tablewrap{overflow-x:auto}
+  footer{border-top:1px solid var(--line);margin-top:40px;padding:22px 0 44px;color:var(--steel);font-size:.86rem}
+  a{color:var(--green)}
+  label{display:block;font-size:.82rem;color:var(--steel);margin-bottom:4px}
+  input[type=text],input[type=number]{width:100%;padding:9px 11px;border:1px solid var(--line);
+     border-radius:6px;background:var(--paper);color:var(--ink);font-size:1rem}
+  .ig{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+  .hidden{display:none}
+  @media print{header,#drop,.note,#intake,footer .noprint{display:none}}
+</style>
+</head>
+<body>
+
+<header><div class="wrap"><a class="logo" href="/">Lattice<span>24</span></a></div></header>
+
+<div class="wrap">
+  <div class="hero">
+    <p class="kicker">Free sensor entropy audit</p>
+    <h1>Drop a CSV. See which channels moved.</h1>
+    <p class="lede">Every column in your file is profiled for entropy across the record,
+    and the ones that changed most are flagged. Takes seconds, needs no account, and
+    <b>runs entirely in your browser — the file is never uploaded anywhere.</b>
+    Open your network tab and check.</p>
+  </div>
+
+  <div id="drop">
+    <div class="big">Drop a CSV here, or click to choose</div>
+    <div class="sm">Any time-series, sensor, process or historian export. Stays on your machine.</div>
+    <input type="file" id="file" accept=".csv,.txt" class="hidden">
+  </div>
+
+  <div id="results" class="hidden">
+    <div class="stats" id="summary"></div>
+
+    <div class="panel">
+      <h2>Channel profile</h2>
+      <div class="tablewrap">
+        <table id="tbl">
+          <thead><tr><th>Channel</th><th>n</th><th>Entropy<br>first third</th>
+          <th>Entropy<br>last third</th><th>Change</th><th>Status</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="src" id="ruleline"></p>
+    </div>
+
+    <div class="note">
+      <p><b>What a flag means, and what it does not.</b> A flag means one thing only:
+      <span id="rulerestate"></span> That is a fact about your data against a threshold
+      you can change below.</p>
+      <p style="margin-top:8px">It is <i>not</i> a diagnosis that the instrument is faulty.
+      Entropy shifts for real reasons too — a process change, a different feedstock, a
+      recalibration, a season. Cross-check a flagged channel against your own maintenance
+      and calibration records first. If the dates line up, that is worth a conversation.
+      If they do not, the flag is telling you something changed in the process, not the
+      sensor.</p>
+    </div>
+
+    <div class="panel">
+      <h2>Adjust the threshold</h2>
+      <div class="ig">
+        <div><label for="thr">Flag when entropy changes by more than</label>
+          <input type="number" id="thr" value="25" min="1" max="200" step="1"></div>
+        <div><label for="minpts">Ignore channels with fewer than</label>
+          <input type="number" id="minpts" value="60" min="10" max="100000" step="10"></div>
+      </div>
+      <p class="src">Defaults: 25% change, minimum 60 points per third. Both are arbitrary
+      starting points, not thresholds derived from your plant. Move them and watch which
+      channels come and go — if a channel flips at 24% versus 26%, it was never a strong flag.</p>
+    </div>
+
+    <div class="panel" id="intake">
+      <h2>Want the flagged channels looked at properly?</h2>
+      <p style="font-size:.95rem;color:var(--ink2)">This tool screens. It does not diagnose.
+      If the flagged dates line up with something real in your records, send me what you found
+      and I will go deeper on those channels.</p>
+      <div class="ig" style="margin-top:14px">
+        <div><label for="aname">Your name</label><input type="text" id="aname" placeholder="Jane Smith"></div>
+        <div><label for="aorg">Organisation</label><input type="text" id="aorg" placeholder="Acme Energy"></div>
+      </div>
+      <p style="margin-top:16px"><a id="aBtn" class="btn" href="#">Open this in your email &rarr;</a>
+      &nbsp; <button class="btn" onclick="window.print()" style="background:var(--steel)">Print / save report</button></p>
+      <p class="src"><b>Nothing is sent from this page.</b> The button opens your own email
+      with the summary — channel names and counts only, never your readings.</p>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Method</h2>
+    <p style="font-size:.93rem">Each numeric column is converted to fractional changes
+    between consecutive readings. Those changes are binned into five buckets at
+    ±0.0005 and ±0.002, and Shannon entropy is computed over the bin distribution,
+    normalised to 0–1. Low entropy means the channel is moving in a structured way;
+    high entropy means it is behaving like noise. The record is split in thirds and the
+    first third is compared against the last.</p>
+    <p class="src">Those bin thresholds are not arbitrary — they were tested against
+    10× tighter, 100× tighter and 10× wider alternatives on public benchmark data, and
+    performed best. Columns that are constant, non-numeric, or too short are skipped and
+    reported as such rather than silently dropped.</p>
+  </div>
+
+  <footer>
+    <p>Lattice24 · Sylvan Lake, Alberta · <a href="mailto:jim@lattice24.com">jim@lattice24.com</a></p>
+    <p class="noprint" style="margin-top:6px">Runs client-side. Your file is read in the
+    browser and never transmitted.</p>
+  </footer>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+let COLS=[], FNAME="";
+
+function entropy(vals){
+  if(vals.length<3) return null;
+  const th=[-0.002,-0.0005,0.0005,0.002], b=[0,0,0,0,0];
+  let m=0;
+  for(let i=1;i<vals.length;i++){
+    const prev=vals[i-1], c=(vals[i]-prev)/(Math.abs(prev)+1e-10);
+    if(!isFinite(c)) continue;
+    m++;
+    if(c<th[0]) b[0]++; else if(c<th[1]) b[1]++; else if(c<th[2]) b[2]++;
+    else if(c<th[3]) b[3]++; else b[4]++;
+  }
+  if(m<2) return null;
+  let H=0;
+  for(const x of b){ if(x>0){ const p=x/m; H-=p*Math.log2(p); } }
+  return H/Math.log2(5);
+}
+
+function parseCSV(text){
+  const lines=text.split(/\r?\n/).filter(l=>l.trim().length);
+  if(!lines.length) return [];
+  const delim = (lines[0].match(/\t/g)||[]).length > (lines[0].match(/,/g)||[]).length ? "\t" : ",";
+  const head=lines[0].split(delim).map(h=>h.replace(/^"|"$/g,"").trim());
+  const cols=head.map(h=>({name:h||"(unnamed)",vals:[],nonnum:0}));
+  for(let i=1;i<lines.length;i++){
+    const parts=lines[i].split(delim);
+    for(let j=0;j<cols.length;j++){
+      const raw=(parts[j]||"").replace(/^"|"$/g,"").trim();
+      const v=parseFloat(raw);
+      if(raw!==""&&isFinite(v)) cols[j].vals.push(v); else cols[j].nonnum++;
+    }
+  }
+  return cols;
+}
+
+function analyse(){
+  const thr=Math.max(1,+$("thr").value||25), minpts=Math.max(10,+$("minpts").value||60);
+  const tb=$("tbl").querySelector("tbody"); tb.innerHTML="";
+  let flagged=0, usable=0, skipped=0;
+  const flagNames=[];
+  COLS.forEach(c=>{
+    const n=c.vals.length, third=Math.floor(n/3);
+    let status,cls="",h1=null,h2=null,chg=null;
+    if(third<minpts){ status='<span class="tag o">too short</span>'; skipped++; }
+    else {
+      const uniq=new Set(c.vals.slice(0,Math.min(n,2000))).size;
+      if(uniq<=1){ status='<span class="tag q">constant</span>'; skipped++; }
+      else{
+        h1=entropy(c.vals.slice(0,third));
+        h2=entropy(c.vals.slice(n-third));
+        if(h1===null||h2===null||h1===0){ status='<span class="tag o">not readable</span>'; skipped++; }
+        else{
+          usable++;
+          chg=(h2-h1)/h1*100;
+          if(Math.abs(chg)>=thr){ status='<span class="tag f">flagged</span>'; cls="flag"; flagged++; flagNames.push(c.name+" ("+(chg>0?"+":"")+chg.toFixed(0)+"%)"); }
+          else status='<span class="tag" style="background:var(--green);color:#fff">steady</span>';
+        }
+      }
+    }
+    tb.insertAdjacentHTML("beforeend",
+      `<tr class="${cls}"><td>${c.name}</td><td class="n">${n.toLocaleString()}</td>`+
+      `<td class="n">${h1===null?"—":h1.toFixed(3)}</td>`+
+      `<td class="n">${h2===null?"—":h2.toFixed(3)}</td>`+
+      `<td class="n">${chg===null?"—":(chg>0?"+":"")+chg.toFixed(1)+"%"}</td>`+
+      `<td>${status}</td></tr>`);
+  });
+  $("summary").innerHTML=
+    `<div class="stat"><div class="n">${COLS.length}</div><div class="l">columns in file</div></div>`+
+    `<div class="stat"><div class="n">${usable}</div><div class="l">channels profiled</div></div>`+
+    `<div class="stat"><div class="n">${flagged}</div><div class="l">flagged at ${thr}%</div></div>`+
+    `<div class="stat"><div class="n">${skipped}</div><div class="l">skipped</div></div>`;
+  const rule=`A channel is flagged when its entropy changed by ${thr}% or more between the first and last third of the record, with at least ${minpts} points in each third.`;
+  $("ruleline").textContent=rule;
+  $("rulerestate").textContent=rule.replace(/^A channel is flagged when its/,"its");
+  buildMail(flagNames,usable,flagged,thr);
+}
+
+function buildMail(names,usable,flagged,thr){
+  const nm=($("aname").value||"").trim(), org=($("aorg").value||"").trim();
+  const body=[
+    nm?"Name: "+nm:"", org?"Organisation: "+org:"", "",
+    "I ran the free entropy audit on my own data.","",
+    "File:              "+FNAME,
+    "Channels profiled: "+usable,
+    "Flagged at "+thr+"%:      "+flagged, "",
+    flagged?"Flagged channels:":"",
+    ...names.slice(0,25).map(s=>"  "+s),
+    names.length>25?"  ... and "+(names.length-25)+" more":"", "",
+    "I have cross-checked / will cross-check these against our maintenance records.","",
+    "(Channel names and counts only — no readings included.)"
+  ].filter(x=>x!==null&&x!==undefined).join("\n");
+  $("aBtn").href="mailto:jim@lattice24.com?subject="
+    +encodeURIComponent("Entropy audit — "+(org||nm||FNAME||"results"))
+    +"&body="+encodeURIComponent(body);
+}
+
+function handle(file){
+  FNAME=file.name;
+  const r=new FileReader();
+  r.onload=e=>{
+    COLS=parseCSV(e.target.result);
+    if(!COLS.length){ alert("Could not read any columns from that file."); return; }
+    $("results").classList.remove("hidden");
+    analyse();
+    $("results").scrollIntoView({behavior:"smooth"});
+  };
+  r.readAsText(file);
+}
+
+$("drop").addEventListener("click",()=>$("file").click());
+$("file").addEventListener("change",e=>{ if(e.target.files[0]) handle(e.target.files[0]); });
+["dragenter","dragover"].forEach(ev=>$("drop").addEventListener(ev,e=>{e.preventDefault();$("drop").classList.add("over");}));
+["dragleave","drop"].forEach(ev=>$("drop").addEventListener(ev,e=>{e.preventDefault();$("drop").classList.remove("over");}));
+$("drop").addEventListener("drop",e=>{ const f=e.dataTransfer.files[0]; if(f) handle(f); });
+["thr","minpts"].forEach(id=>$(id).addEventListener("input",()=>{ if(COLS.length) analyse(); }));
+["aname","aorg"].forEach(id=>$(id).addEventListener("input",()=>{ if(COLS.length) analyse(); }));
+</script>
+</body>
+</html>
