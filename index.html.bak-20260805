@@ -150,9 +150,6 @@
     font-size: 0.73rem; color: var(--ink-faint); line-height: 1.85;
   }
   @media (max-width: 480px) { .val .n { font-size: 1.5rem; } }
-  .toolnav { margin-top: 14px; font-size: 0.9rem; color: var(--ink-faint); }
-  .toolnav a { font-weight: 600; text-decoration: none; }
-  .toolnav a:hover { text-decoration: underline; }
 </style>
 
 <div class="page">
@@ -161,8 +158,6 @@
   <header>
     <p class="eyebrow">Lattice24 · Technical brief</p>
     <h1>Detecting sensor drift without a reference</h1>
-    <p class="toolnav"><a href="/carbon.html">→ GPU fleet carbon calculator</a> ·
-    footprint and carbon-price exposure from published emission factors, in your browser</p>
   </header>
 
   <p class="byline">
@@ -287,8 +282,7 @@
     LATTICE24 · JAMES JARDINE · ORCID 0009-0004-9073-7192<br>
     Concept DOI <a href="https://doi.org/10.5281/zenodo.21738214">10.5281/zenodo.21738214</a> ·
     Engine <a href="https://doi.org/10.5281/zenodo.18918783">10.5281/zenodo.18918783</a><br>
-    All figures reproducible from published data. Methods, code and negative results in the record above.<br>
-    Tools · <a href="/carbon.html">GPU fleet carbon calculator</a>
+    All figures reproducible from published data. Methods, code and negative results in the record above.
   </footer>
 
 </div>

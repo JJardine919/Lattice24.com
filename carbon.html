@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GPU Fleet Carbon Calculator — Lattice24</title>
+<meta name="description" content="Calculate your GPU fleet's annual carbon footprint and carbon-price exposure from published grid emission factors. Runs entirely in your browser.">
+<style>
+  :root{--ink:#12201a;--ink2:#33463d;--paper:#f6f4ef;--card:#fff;--green:#1f7a4d;
+        --green-dk:#175c3a;--amber:#c8611a;--line:#e2ded4;--steel:#5c6b63;
+        --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  @media (prefers-color-scheme:dark){:root{--ink:#e9e7e1;--ink2:#b3bdb7;--paper:#111613;
+        --card:#182019;--green:#4fbe86;--green-dk:#6ed3a0;--line:#26302a;--steel:#8d9a92}}
+  :root[data-theme="dark"]{--ink:#e9e7e1;--ink2:#b3bdb7;--paper:#111613;--card:#182019;
+        --green:#4fbe86;--green-dk:#6ed3a0;--line:#26302a;--steel:#8d9a92}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       background:var(--paper);color:var(--ink);line-height:1.6;font-size:17px}
+  .wrap{max-width:940px;margin:0 auto;padding:0 22px}
+  header{border-bottom:1px solid var(--line);padding:16px 0}
+  .logo{font-weight:800;font-size:1.2rem;letter-spacing:.04em;text-decoration:none;color:var(--ink)}
+  .logo span{color:var(--green)}
+  .hero{padding:52px 0 28px}
+  .kicker{font-family:var(--mono);font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--green);margin-bottom:12px}
+  h1{font-size:clamp(1.8rem,4.4vw,2.6rem);line-height:1.15;letter-spacing:-.02em;margin-bottom:14px}
+  .lede{color:var(--ink2);max-width:44rem}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:24px;margin:26px 0}
+  .panel h2{font-size:1.05rem;margin-bottom:18px;letter-spacing:-.01em}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px}
+  label{display:block;font-size:.85rem;color:var(--steel);margin-bottom:5px}
+  select,input[type=number]{width:100%;padding:9px 11px;border:1px solid var(--line);
+       border-radius:6px;background:var(--paper);color:var(--ink);font-size:1rem;font-family:var(--mono)}
+  input[type=range]{width:100%;accent-color:var(--green)}
+  .val{float:right;font-family:var(--mono);color:var(--green);font-weight:700}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin-top:8px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px}
+  .stat .n{font-family:var(--mono);font-size:1.7rem;font-weight:700;color:var(--green);line-height:1.1}
+  .stat .l{font-size:.78rem;color:var(--steel);margin-top:6px}
+  .stat .s{font-size:.72rem;color:var(--steel);margin-top:4px;opacity:.8}
+  table{border-collapse:collapse;width:100%;font-size:.92rem;margin-top:6px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+  th{font-family:var(--mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--steel)}
+  td.n{font-family:var(--mono);text-align:right;white-space:nowrap}
+  .note{border-left:3px solid var(--amber);background:color-mix(in srgb,var(--amber) 8%,transparent);
+        padding:14px 16px;border-radius:0 6px 6px 0;margin:22px 0;font-size:.93rem}
+  .note b{color:var(--amber)}
+  footer{border-top:1px solid var(--line);margin-top:44px;padding:22px 0 46px;color:var(--steel);font-size:.86rem}
+  a{color:var(--green)}
+  .src{font-size:.8rem;color:var(--steel);margin-top:14px}
+  .tablewrap{overflow-x:auto}
+</style>
+</head>
+<body>
+
+<header><div class="wrap"><a class="logo" href="/">Lattice<span>24</span></a></div></header>
+
+<div class="wrap">
+  <div class="hero">
+    <p class="kicker">GPU fleet carbon calculator</p>
+    <h1>What your compute actually emits</h1>
+    <p class="lede">Most organisations reporting under CSRD cannot put a defensible number
+    on their GPU fleet. This calculates one from published grid emission factors and
+    manufacturer power ratings — and shows the carbon-price exposure that comes with it.
+    <b>It runs entirely in your browser. Nothing is uploaded.</b></p>
+  </div>
+
+  <div class="panel">
+    <h2>Fleet configuration</h2>
+    <div class="grid">
+      <div>
+        <label for="gpu">GPU type</label>
+        <select id="gpu"></select>
+      </div>
+      <div>
+        <label for="region">Region / grid</label>
+        <select id="region"></select>
+      </div>
+      <div>
+        <label for="count">GPU count</label>
+        <input type="number" id="count" value="500" min="1" max="200000">
+      </div>
+      <div>
+        <label for="pue">Data-centre PUE <span class="val" id="pueV">1.20</span></label>
+        <input type="range" id="pue" min="1.0" max="2.0" step="0.01" value="1.20">
+      </div>
+      <div>
+        <label for="util">Average utilisation <span class="val" id="utilV">75%</span></label>
+        <input type="range" id="util" min="1" max="100" step="1" value="75">
+      </div>
+      <div>
+        <label for="hours">Hours per day <span class="val" id="hoursV">20 h</span></label>
+        <input type="range" id="hours" min="1" max="24" step="1" value="20">
+      </div>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="n" id="kwh">—</div><div class="l">MWh per year</div><div class="s">electricity, including PUE overhead</div></div>
+    <div class="stat"><div class="n" id="co2">—</div><div class="l">tCO₂e per year</div><div class="s" id="efNote">—</div></div>
+    <div class="stat"><div class="n" id="cost95">—</div><div class="l">exposure at $95/t</div><div class="s">Alberta TIER fund price</div></div>
+    <div class="stat"><div class="n" id="cost20">—</div><div class="l">exposure at $20/t</div><div class="s">where TIER credits actually trade</div></div>
+  </div>
+
+  <div class="panel">
+    <h2>Sensitivity — what actually moves the number</h2>
+    <div class="tablewrap">
+      <table id="sens">
+        <thead><tr><th>Change</th><th>New tCO₂e/yr</th><th>Difference</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="src">Region is almost always the largest single lever, and it is usually the
+    one nobody models. Moving the same fleet between grids can change the reported figure
+    several-fold without touching a single workload.</p>
+  </div>
+
+  <div class="note">
+    <p><b>What this does not claim.</b> This models your <i>current</i> footprint. It does
+    not claim a reduction, because we have not measured one on your fleet. Anyone quoting
+    you a percentage saving before seeing your data is guessing.</p>
+    <p style="margin-top:8px">The useful question after this one is <i>where</i> reduction
+    spend buys the most tonnes — scheduling, placement, utilisation, and which workloads
+    justify their emissions. That is optimisation work on your real numbers, and it starts
+    with a footprint you can defend.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Method and sources</h2>
+    <p style="font-size:.93rem">
+      Annual electricity = GPU count × TDP × utilisation × hours/day × 365 × PUE.<br>
+      Annual emissions = electricity × regional grid carbon intensity.
+    </p>
+    <p class="src">
+      <b>Grid intensity:</b> Ember, <i>Global Electricity Review 2025</i> (2024 data) —
+      global 445, US 384, EU 213, China 560, India 708, Russia 449 gCO₂/kWh; UK 177,
+      Germany 330, France 41 gCO₂e/kWh from Ember yearly electricity data.<br>
+      <b>GPU TDP:</b> manufacturer specifications.<br>
+      <b>PUE:</b> your own figure if you have one. 1.2 is typical of modern hyperscale
+      facilities; older enterprise rooms run considerably higher.<br>
+      <b>Carbon price:</b> Alberta TIER fund price frozen at CAD $95/tonne since May 2025.
+      TIER credits trade well below that — under $20 — so both are shown. TIER prices only
+      emissions above a facility benchmark, so this is exposure per tonne abated, not a
+      tax bill.
+    </p>
+  </div>
+
+  <footer>
+    <p>Lattice24 · Sylvan Lake, Alberta · <a href="mailto:jim@lattice24.com">jim@lattice24.com</a></p>
+    <p style="margin-top:6px">Runs client-side. No data is transmitted, stored, or logged.</p>
+  </footer>
+</div>
+
+<script>
+const GPUS=[["NVIDIA H100 SXM",700],["NVIDIA H100 PCIe",350],["NVIDIA A100 80GB",400],
+  ["NVIDIA L40S",350],["NVIDIA H200",700],["AMD MI300X",750],["NVIDIA V100",300],
+  ["NVIDIA L4",72],["Google TPU v4 (per chip)",192]];
+const REGIONS=[["United States",384],["European Union",213],["United Kingdom",177],
+  ["Germany",330],["France",41],["China",560],["India",708],["Russia",449],
+  ["World average",445]];
+const $=id=>document.getElementById(id);
+GPUS.forEach(([n,w],i)=>$("gpu").add(new Option(n+" — "+w+" W",i)));
+REGIONS.forEach(([n,g],i)=>$("region").add(new Option(n+" — "+g+" gCO₂/kWh",i)));
+const fmt=(n,d=0)=>n.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d});
+const money=n=>"$"+(n>=1e6?fmt(n/1e6,2)+"M":fmt(n));
+
+function co2(count,tdp,util,hours,pue,gi){
+  const kwh = count*(tdp/1000)*(util/100)*hours*365*pue;   // kWh/yr
+  return {kwh, t: kwh*gi/1e6};                             // g -> tonnes
+}
+function calc(){
+  const g=GPUS[+$("gpu").value], r=REGIONS[+$("region").value];
+  const count=Math.max(1,+$("count").value||1), util=+$("util").value,
+        hours=+$("hours").value, pue=+$("pue").value;
+  $("utilV").textContent=util+"%"; $("hoursV").textContent=hours+" h";
+  $("pueV").textContent=pue.toFixed(2);
+  const base=co2(count,g[1],util,hours,pue,r[1]);
+  $("kwh").textContent=fmt(base.kwh/1000);
+  $("co2").textContent=fmt(base.t);
+  $("efNote").textContent=r[0]+" · "+r[1]+" gCO₂/kWh";
+  $("cost95").textContent=money(base.t*95);
+  $("cost20").textContent=money(base.t*20);
+
+  const rows=[];
+  const cleanest=REGIONS.reduce((a,b)=>b[1]<a[1]?b:a);
+  rows.push(["Move to "+cleanest[0]+" ("+cleanest[1]+" g)", co2(count,g[1],util,hours,pue,cleanest[1]).t]);
+  rows.push(["PUE 1.10 instead of "+pue.toFixed(2), co2(count,g[1],util,hours,1.10,r[1]).t]);
+  rows.push(["Utilisation "+Math.max(1,util-20)+"% instead of "+util+"%", co2(count,g[1],Math.max(1,util-20),hours,pue,r[1]).t]);
+  rows.push(["10% fewer GPUs", co2(Math.round(count*0.9),g[1],util,hours,pue,r[1]).t]);
+  const tb=$("sens").querySelector("tbody"); tb.innerHTML="";
+  rows.forEach(([label,t])=>{
+    const d=t-base.t, sign=d>0?"+":"";
+    tb.insertAdjacentHTML("beforeend",
+      `<tr><td>${label}</td><td class="n">${fmt(t)}</td><td class="n">${sign}${fmt(d)}</td></tr>`);
+  });
+}
+["gpu","region","count","util","hours","pue"].forEach(id=>{
+  $(id).addEventListener("input",calc); $(id).addEventListener("change",calc);
+});
+calc();
+</script>
+</body>
+</html>
