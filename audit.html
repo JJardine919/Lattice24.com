@@ -152,7 +152,9 @@
     <p class="src">Those bin thresholds are not arbitrary — they were tested against
     10× tighter, 100× tighter and 10× wider alternatives on public benchmark data, and
     performed best. Columns that are constant, non-numeric, or too short are skipped and
-    reported as such rather than silently dropped.</p>
+    reported as such rather than silently dropped. <b>A channel marked "flatlined" is
+    worth looking at</b> — a sensor reporting one unchanging value across the whole record
+    is either out of service or stuck, and neither shows up as an alarm.</p>
   </div>
 
   <footer>
@@ -216,12 +218,12 @@ function analyse(){
   COLS.forEach(c=>{
     const n=c.vals.length, third=Math.floor(n/3);
     let status,cls="",h1=null,h2=null,chg=null;
-    if(isIndexLike(c)){ status='<span class="tag o">index / time</span>'; skipped++; }
+    const uniqAll=new Set(c.vals.slice(0,Math.min(n,3000))).size;
+    if(n>0 && uniqAll<=1){ status='<span class="tag q">flatlined</span>'; skipped++; }
+    else if(isIndexLike(c)){ status='<span class="tag o">index / time</span>'; skipped++; }
     else if(third<minpts){ status='<span class="tag o">too short</span>'; skipped++; }
     else {
-      const uniq=new Set(c.vals.slice(0,Math.min(n,2000))).size;
-      if(uniq<=1){ status='<span class="tag q">constant</span>'; skipped++; }
-      else{
+      {
         h1=entropy(c.vals.slice(0,third));
         h2=entropy(c.vals.slice(n-third));
         if(h1===null||h2===null){ status='<span class="tag o">not readable</span>'; skipped++; }
