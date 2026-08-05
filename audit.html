@@ -89,7 +89,7 @@
       <div class="tablewrap">
         <table id="tbl">
           <thead><tr><th>Channel</th><th>n</th><th>Entropy<br>first third</th>
-          <th>Entropy<br>last third</th><th>Change</th><th>Status</th></tr></thead>
+          <th>Entropy<br>last third</th><th>Movement</th><th>Status</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -111,14 +111,16 @@
     <div class="panel">
       <h2>Adjust the threshold</h2>
       <div class="ig">
-        <div><label for="thr">Flag when entropy changes by more than</label>
-          <input type="number" id="thr" value="25" min="1" max="200" step="1"></div>
+        <div><label for="thr">Flag when entropy moves by more than (0–1 scale)</label>
+          <input type="number" id="thr" value="0.10" min="0.01" max="1" step="0.01"></div>
         <div><label for="minpts">Ignore channels with fewer than</label>
           <input type="number" id="minpts" value="60" min="10" max="100000" step="10"></div>
       </div>
-      <p class="src">Defaults: 25% change, minimum 60 points per third. Both are arbitrary
+      <p class="src">Defaults: 0.10 absolute movement, minimum 60 points per third.
+      Absolute rather than percentage on purpose — a channel whose entropy goes from
+      0.005 to 0.025 has "changed 400%" and means nothing. Both are arbitrary
       starting points, not thresholds derived from your plant. Move them and watch which
-      channels come and go — if a channel flips at 24% versus 26%, it was never a strong flag.</p>
+      channels come and go — if a channel flips between 0.09 and 0.11, it was never a strong flag.</p>
     </div>
 
     <div class="panel" id="intake">
@@ -144,7 +146,9 @@
     ±0.0005 and ±0.002, and Shannon entropy is computed over the bin distribution,
     normalised to 0–1. Low entropy means the channel is moving in a structured way;
     high entropy means it is behaving like noise. The record is split in thirds and the
-    first third is compared against the last.</p>
+    first third is compared against the last. Columns that are monotonic counters —
+    timestamps, row indices, sample numbers — are detected and excluded, since their
+    "entropy" describes the clock, not an instrument.</p>
     <p class="src">Those bin thresholds are not arbitrary — they were tested against
     10× tighter, 100× tighter and 10× wider alternatives on public benchmark data, and
     performed best. Columns that are constant, non-numeric, or too short are skipped and
@@ -196,26 +200,35 @@ function parseCSV(text){
   return cols;
 }
 
+function isIndexLike(c){
+  const nm=c.name.toLowerCase();
+  if(/^(time|date|timestamp|datetime|index|idx|row|seq|sample|n|#)$/.test(nm)) return true;
+  if(/time|date|stamp/.test(nm)) return true;
+  const v=c.vals; if(v.length<10) return false;
+  let inc=0; for(let i=1;i<v.length;i++) if(v[i]>=v[i-1]) inc++;
+  return inc/(v.length-1) > 0.999;          // monotonic = a counter, not a reading
+}
 function analyse(){
-  const thr=Math.max(1,+$("thr").value||25), minpts=Math.max(10,+$("minpts").value||60);
+  const thr=Math.max(0.01,+$("thr").value||0.10), minpts=Math.max(10,+$("minpts").value||60);
   const tb=$("tbl").querySelector("tbody"); tb.innerHTML="";
   let flagged=0, usable=0, skipped=0;
   const flagNames=[];
   COLS.forEach(c=>{
     const n=c.vals.length, third=Math.floor(n/3);
     let status,cls="",h1=null,h2=null,chg=null;
-    if(third<minpts){ status='<span class="tag o">too short</span>'; skipped++; }
+    if(isIndexLike(c)){ status='<span class="tag o">index / time</span>'; skipped++; }
+    else if(third<minpts){ status='<span class="tag o">too short</span>'; skipped++; }
     else {
       const uniq=new Set(c.vals.slice(0,Math.min(n,2000))).size;
       if(uniq<=1){ status='<span class="tag q">constant</span>'; skipped++; }
       else{
         h1=entropy(c.vals.slice(0,third));
         h2=entropy(c.vals.slice(n-third));
-        if(h1===null||h2===null||h1===0){ status='<span class="tag o">not readable</span>'; skipped++; }
+        if(h1===null||h2===null){ status='<span class="tag o">not readable</span>'; skipped++; }
         else{
           usable++;
-          chg=(h2-h1)/h1*100;
-          if(Math.abs(chg)>=thr){ status='<span class="tag f">flagged</span>'; cls="flag"; flagged++; flagNames.push(c.name+" ("+(chg>0?"+":"")+chg.toFixed(0)+"%)"); }
+          chg=h2-h1;                                    // ABSOLUTE change on the 0-1 scale
+          if(Math.abs(chg)>=thr){ status='<span class="tag f">flagged</span>'; cls="flag"; flagged++; flagNames.push(c.name+" ("+(chg>0?"+":"")+chg.toFixed(3)+")"); }
           else status='<span class="tag" style="background:var(--green);color:#fff">steady</span>';
         }
       }
@@ -224,15 +237,15 @@ function analyse(){
       `<tr class="${cls}"><td>${c.name}</td><td class="n">${n.toLocaleString()}</td>`+
       `<td class="n">${h1===null?"—":h1.toFixed(3)}</td>`+
       `<td class="n">${h2===null?"—":h2.toFixed(3)}</td>`+
-      `<td class="n">${chg===null?"—":(chg>0?"+":"")+chg.toFixed(1)+"%"}</td>`+
+      `<td class="n">${chg===null?"—":(chg>0?"+":"")+chg.toFixed(3)}</td>`+
       `<td>${status}</td></tr>`);
   });
   $("summary").innerHTML=
     `<div class="stat"><div class="n">${COLS.length}</div><div class="l">columns in file</div></div>`+
     `<div class="stat"><div class="n">${usable}</div><div class="l">channels profiled</div></div>`+
-    `<div class="stat"><div class="n">${flagged}</div><div class="l">flagged at ${thr}%</div></div>`+
+    `<div class="stat"><div class="n">${flagged}</div><div class="l">flagged at ${thr}</div></div>`+
     `<div class="stat"><div class="n">${skipped}</div><div class="l">skipped</div></div>`;
-  const rule=`A channel is flagged when its entropy changed by ${thr}% or more between the first and last third of the record, with at least ${minpts} points in each third.`;
+  const rule=`A channel is flagged when its entropy moved by ${thr} or more (on a 0-1 scale) between the first and last third of the record, with at least ${minpts} points in each third. Index and timestamp columns are excluded.`;
   $("ruleline").textContent=rule;
   $("rulerestate").textContent=rule.replace(/^A channel is flagged when its/,"its");
   buildMail(flagNames,usable,flagged,thr);
@@ -245,7 +258,7 @@ function buildMail(names,usable,flagged,thr){
     "I ran the free entropy audit on my own data.","",
     "File:              "+FNAME,
     "Channels profiled: "+usable,
-    "Flagged at "+thr+"%:      "+flagged, "",
+    "Flagged at "+thr+":       "+flagged, "",
     flagged?"Flagged channels:":"",
     ...names.slice(0,25).map(s=>"  "+s),
     names.length>25?"  ... and "+(names.length-25)+" more":"", "",
