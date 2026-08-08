@@ -4,38 +4,42 @@
 
 <style>
   :root {
-    --ground: #F5F4F1;
-    --panel: #FFFFFF;
-    --ink: #16191B;
-    --ink-soft: #4C5559;
-    --ink-faint: #7C8688;
-    --rule: #DBD9D3;
-    --rule-soft: #EAE8E3;
-    --signal: #A9601A;
-    --signal-soft: #F0E2CE;
-    --good: #3F6B52;
-    --crit: #A33C33;
+    --ground: #000510;
+    --panel: #0A0E18;
+    --ink: #E8F4FF;
+    --ink-soft: #A8C5E0;
+    --ink-faint: #6B7E96;
+    --rule: #1A2540;
+    --rule-soft: #0F1620;
+    --signal: #00D9FF;
+    --signal-soft: #003D47;
+    --neon-cyan: #00D9FF;
+    --neon-purple: #C400FF;
+    --neon-pink: #FF00FF;
+    --neon-blue: #0099FF;
+    --good: #00FF88;
+    --crit: #FF3366;
     --measure: 68ch;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --ground: #0E1113;
-      --panel: #14181A;
-      --ink: #E8E9E6;
-      --ink-soft: #A3AAAB;
-      --ink-faint: #6E7779;
-      --rule: #262C2E;
-      --rule-soft: #1C2123;
-      --signal: #E0A253;
-      --signal-soft: #2A2118;
-      --good: #7FB08F;
-      --crit: #D9736A;
+      --ground: #000510;
+      --panel: #0A0E18;
+      --ink: #E8F4FF;
+      --ink-soft: #A8C5E0;
+      --ink-faint: #6B7E96;
+      --rule: #1A2540;
+      --rule-soft: #0F1620;
+      --signal: #00D9FF;
+      --signal-soft: #003D47;
+      --good: #00FF88;
+      --crit: #FF3366;
     }
   }
   :root[data-theme="dark"] {
-    --ground: #0E1113; --panel: #14181A; --ink: #E8E9E6; --ink-soft: #A3AAAB;
-    --ink-faint: #6E7779; --rule: #262C2E; --rule-soft: #1C2123;
-    --signal: #E0A253; --signal-soft: #2A2118; --good: #7FB08F; --crit: #D9736A;
+    --ground: #000510; --panel: #0A0E18; --ink: #E8F4FF; --ink-soft: #A8C5E0;
+    --ink-faint: #6B7E96; --rule: #1A2540; --rule-soft: #0F1620;
+    --signal: #00D9FF; --signal-soft: #003D47; --good: #00FF88; --crit: #FF3366;
   }
   :root[data-theme="light"] {
     --ground: #F5F4F1; --panel: #FFFFFF; --ink: #16191B; --ink-soft: #4C5559;
@@ -45,54 +49,95 @@
 
   * { box-sizing: border-box; }
 
+  @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-20px); } }
+  @keyframes glow { 0%, 100% { filter: drop-shadow(0 0 4px var(--signal)) drop-shadow(0 0 12px rgba(0,217,255,0.4)); } 50% { filter: drop-shadow(0 0 8px var(--signal)) drop-shadow(0 0 20px rgba(0,217,255,0.6)); } }
+  @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
   .page {
-    background: var(--ground);
+    background: linear-gradient(135deg, #000510 0%, #050115 50%, #001030 100%);
+    background-attachment: fixed;
     color: var(--ink);
     font-family: Charter, "Bitstream Charter", "Sitka Text", Cambria, Georgia, serif;
     font-size: 17px;
     line-height: 1.62;
     padding: clamp(1.75rem, 5vw, 5rem) clamp(1.1rem, 5vw, 2rem) 5rem;
     min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
   }
-  .wrap { max-width: var(--measure); margin: 0 auto; display: flex; flex-direction: column; gap: 2.75rem; }
+
+  /* Hero background with neural network and planets */
+  .page::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><defs><radialGradient id="g1"><stop offset="0%25" style="stop-color:rgba(0,217,255,0.05)"/><stop offset="100%25" style="stop-color:rgba(0,217,255,0)"/></radialGradient></defs><circle cx="50" cy="50" r="40" fill="url(%23g1)"/></svg>');
+    background-size: 20%;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .page { position: relative; z-index: 1; }
+  .wrap { position: relative; z-index: 2; }
+  .wrap { max-width: var(--measure); margin: 0 auto; display: flex; flex-direction: column; gap: 2.75rem; animation: fadeIn 1s ease-out; }
 
   .eyebrow {
     font-family: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
     font-size: 0.66rem; letter-spacing: 0.16em; text-transform: uppercase;
-    color: var(--ink-faint); margin: 0;
+    color: var(--neon-cyan); margin: 0;
+    text-shadow: 0 0 8px rgba(0, 217, 255, 0.5);
   }
 
   h1 {
     font-family: "Helvetica Neue", Inter, system-ui, sans-serif;
     font-size: clamp(1.85rem, 5vw, 2.7rem); line-height: 1.1; font-weight: 700;
     letter-spacing: -0.021em; text-wrap: balance; margin: 0.5rem 0 0;
+    background: linear-gradient(90deg, var(--neon-cyan), var(--neon-blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
   h2 {
     font-family: "Helvetica Neue", Inter, system-ui, sans-serif;
     font-size: 1.13rem; font-weight: 700; letter-spacing: -0.008em;
     text-wrap: balance; margin: 0 0 0.15rem;
-    padding-top: 1.1rem; border-top: 1px solid var(--rule);
+    padding-top: 1.1rem; border-top: 2px solid var(--neon-cyan);
+    color: var(--neon-cyan);
+    text-shadow: 0 0 12px rgba(0, 217, 255, 0.4);
   }
   p { margin: 0; }
   .lede { font-size: 1.09rem; color: var(--ink-soft); }
-  strong { font-weight: 700; color: var(--ink); }
+  strong { font-weight: 700; color: var(--neon-cyan); text-shadow: 0 0 8px rgba(0, 217, 255, 0.5); }
   section { display: flex; flex-direction: column; gap: 0.9rem; }
 
   .byline {
     font-family: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
     font-size: 0.73rem; color: var(--ink-faint); line-height: 1.75;
-    padding-bottom: 1.5rem; border-bottom: 2px solid var(--ink);
+    padding-bottom: 1.5rem; border-bottom: 2px solid var(--neon-cyan);
   }
 
   /* instrument readout — the worked example */
   .readout {
-    background: var(--panel); border: 1px solid var(--rule);
-    border-left: 3px solid var(--signal);
+    background: rgba(10, 14, 24, 0.8);
+    border: 1px solid var(--neon-cyan);
+    border-left: 4px solid var(--neon-cyan);
     padding: 1.3rem 1.4rem; display: flex; flex-direction: column; gap: 1rem;
+    box-shadow: 0 0 20px rgba(0, 217, 255, 0.15), inset 0 0 20px rgba(0, 217, 255, 0.05);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+  }
+  .readout:hover {
+    box-shadow: 0 0 30px rgba(0, 217, 255, 0.25), inset 0 0 30px rgba(0, 217, 255, 0.1);
   }
   .readout-head {
     font-family: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
-    font-size: 0.68rem; letter-spacing: 0.13em; text-transform: uppercase; color: var(--ink-faint);
+    font-size: 0.68rem; letter-spacing: 0.13em; text-transform: uppercase; color: var(--neon-purple);
+    text-shadow: 0 0 6px rgba(196, 0, 255, 0.5);
   }
   .pair { display: flex; flex-wrap: wrap; gap: 1.75rem; }
   .val { display: flex; flex-direction: column; gap: 0.15rem; }
@@ -101,7 +146,11 @@
     font-size: 1.85rem; font-weight: 600; font-variant-numeric: tabular-nums;
     letter-spacing: -0.02em; line-height: 1;
   }
-  .val .n.sig { color: var(--signal); }
+  .val .n.sig {
+    color: var(--neon-cyan);
+    text-shadow: 0 0 12px rgba(0, 217, 255, 0.6);
+    animation: pulse 2s ease-in-out infinite;
+  }
   .val .k { font-size: 0.79rem; color: var(--ink-soft); font-family: "Helvetica Neue", Inter, system-ui, sans-serif; }
   .readout .note { font-size: 0.88rem; color: var(--ink-soft); }
 
@@ -110,20 +159,21 @@
   caption {
     text-align: left; font-family: ui-monospace, "SF Mono", Menlo, monospace;
     font-size: 0.66rem; letter-spacing: 0.13em; text-transform: uppercase;
-    color: var(--ink-faint); padding-bottom: 0.55rem;
+    color: var(--neon-purple); text-shadow: 0 0 6px rgba(196, 0, 255, 0.4); padding-bottom: 0.55rem;
   }
-  th, td { text-align: left; padding: 0.5rem 0.85rem 0.5rem 0; border-bottom: 1px solid var(--rule-soft); }
+  th, td { text-align: left; padding: 0.5rem 0.85rem 0.5rem 0; border-bottom: 1px solid var(--rule); }
   th {
     font-family: "Helvetica Neue", Inter, system-ui, sans-serif; font-size: 0.72rem;
     font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
-    color: var(--ink-faint); border-bottom: 1px solid var(--rule);
+    color: var(--neon-cyan); border-bottom: 2px solid var(--neon-cyan);
+    text-shadow: 0 0 8px rgba(0, 217, 255, 0.3);
   }
   td.num, th.num {
     font-family: ui-monospace, "SF Mono", Menlo, monospace;
     font-variant-numeric: tabular-nums; text-align: right; padding-right: 0;
   }
   td.tag { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.84rem; }
-  tr .hi { color: var(--signal); font-weight: 600; }
+  tr .hi { color: var(--neon-cyan); font-weight: 600; text-shadow: 0 0 8px rgba(0, 217, 255, 0.5); }
 
   ul { margin: 0; padding-left: 1.15rem; display: flex; flex-direction: column; gap: 0.6rem; }
   li::marker { color: var(--ink-faint); }
@@ -141,29 +191,45 @@
   .flag .m {
     font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.68rem;
     letter-spacing: 0.06em; text-transform: uppercase; color: var(--crit);
+    text-shadow: 0 0 6px rgba(255, 51, 102, 0.4);
   }
 
-  a { color: var(--signal); text-decoration-thickness: 1px; text-underline-offset: 2.5px; }
-  a:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
+  a {
+    color: var(--neon-cyan);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 2.5px;
+    text-shadow: 0 0 8px rgba(0, 217, 255, 0.3);
+    transition: all 0.2s ease;
+  }
+  a:hover {
+    color: var(--neon-pink);
+    text-shadow: 0 0 12px rgba(255, 0, 255, 0.6);
+  }
+  a:focus-visible { outline: 2px solid var(--neon-cyan); outline-offset: 3px; }
 
   footer {
-    border-top: 2px solid var(--ink); padding-top: 1.4rem;
+    border-top: 2px solid var(--neon-cyan); padding-top: 1.4rem;
     font-family: ui-monospace, "SF Mono", Menlo, monospace;
     font-size: 0.73rem; color: var(--ink-faint); line-height: 1.85;
   }
   @media (max-width: 480px) { .val .n { font-size: 1.5rem; } }
-  .toolnav { margin-top: 14px; font-size: 0.9rem; color: var(--ink-faint); }
-  .toolnav a { font-weight: 600; text-decoration: none; }
-  .toolnav a:hover { text-decoration: underline; }
+  .toolnav { margin-top: 14px; font-size: 0.9rem; color: var(--ink-soft); }
+  .toolnav a { font-weight: 600; text-decoration: none; display: inline-block; padding: 0.25rem 0.5rem; border-radius: 3px; transition: all 0.2s ease; }
+  .toolnav a:hover { background: rgba(0, 217, 255, 0.1); text-shadow: 0 0 12px rgba(0, 217, 255, 0.6); }
 
-  .l24mark { display:block; width:132px; height:auto; color:var(--ink); }
+  .l24mark { display:block; width:132px; height:auto; color:var(--neon-cyan); animation: float 3s ease-in-out infinite; }
   a.l24 { display:inline-block; text-decoration:none; line-height:0; }
-  a.l24:focus-visible { outline:2px solid var(--signal); outline-offset:4px; }
+  a.l24:focus-visible { outline:2px solid var(--neon-cyan); outline-offset:4px; }
   @media (max-width:520px){ .l24mark{ width:104px; } }
-  .l24mark { --l24-accent: var(--signal); }
+  .l24mark { --l24-accent: var(--neon-cyan); filter: drop-shadow(0 0 8px rgba(0, 217, 255, 0.4)); }
 </style>
 
 <div class="page">
+  <!-- Neural Network Background Canvas -->
+  <canvas id="neuralCanvas" style="position: fixed; top: 0; left: 0; width: 100%; height: 100vh; display: block; z-index: 1; pointer-events: none; opacity: 0.6;"></canvas>
+  <!-- Orbiting Planets Canvas -->
+  <canvas id="planetsCanvas" style="position: fixed; top: 0; left: 0; width: 100%; height: 100vh; display: block; z-index: 0; pointer-events: none;"></canvas>
+
 <div class="wrap">
 
   <header>
@@ -306,3 +372,225 @@
 
 </div>
 </div>
+
+<script>
+// Orbiting Planets Animation
+const planetsCanvas = document.getElementById('planetsCanvas');
+const planetsCtx = planetsCanvas.getContext('2d');
+
+function resizeCanvas() {
+  planetsCanvas.width = window.innerWidth;
+  planetsCanvas.height = window.innerHeight;
+}
+
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+const planets = [
+  { x: 0.2, y: 0.3, radius: 8, orbitRadius: 120, speed: 0.0003, color: '#00D9FF', glow: 'rgba(0,217,255,0.5)' },
+  { x: 0.7, y: 0.6, radius: 12, orbitRadius: 180, speed: 0.0002, color: '#C400FF', glow: 'rgba(196,0,255,0.4)' },
+  { x: 0.5, y: 0.2, radius: 6, orbitRadius: 100, speed: 0.0005, color: '#FF00FF', glow: 'rgba(255,0,255,0.3)' },
+  { x: 0.15, y: 0.7, radius: 10, orbitRadius: 150, speed: 0.00025, color: '#0099FF', glow: 'rgba(0,153,255,0.4)' },
+];
+
+let time = 0;
+
+function drawPlanets() {
+  planetsCtx.clearRect(0, 0, planetsCanvas.width, planetsCanvas.height);
+  time += 1;
+
+  planets.forEach((planet, idx) => {
+    const centerX = planetsCanvas.width * planet.x;
+    const centerY = planetsCanvas.height * planet.y;
+    const angle = time * planet.speed;
+    const x = centerX + Math.cos(angle) * planet.orbitRadius;
+    const y = centerY + Math.sin(angle) * planet.orbitRadius;
+
+    // Draw orbit
+    planetsCtx.strokeStyle = `rgba(0, 217, 255, 0.1)`;
+    planetsCtx.lineWidth = 1;
+    planetsCtx.beginPath();
+    planetsCtx.arc(centerX, centerY, planet.orbitRadius, 0, Math.PI * 2);
+    planetsCtx.stroke();
+
+    // Draw glow
+    const gradient = planetsCtx.createRadialGradient(x, y, 0, x, y, planet.radius * 3);
+    gradient.addColorStop(0, planet.glow);
+    gradient.addColorStop(1, 'rgba(0,0,0,0)');
+    planetsCtx.fillStyle = gradient;
+    planetsCtx.fillRect(x - planet.radius * 3, y - planet.radius * 3, planet.radius * 6, planet.radius * 6);
+
+    // Draw planet
+    planetsCtx.fillStyle = planet.color;
+    planetsCtx.shadowColor = planet.glow;
+    planetsCtx.shadowBlur = 15;
+    planetsCtx.beginPath();
+    planetsCtx.arc(x, y, planet.radius, 0, Math.PI * 2);
+    planetsCtx.fill();
+    planetsCtx.shadowBlur = 0;
+  });
+
+  requestAnimationFrame(drawPlanets);
+}
+
+drawPlanets();
+
+// Neural Network Animation
+const neuralCanvas = document.getElementById('neuralCanvas');
+const neuralCtx = neuralCanvas.getContext('2d');
+
+function resizeNeuralCanvas() {
+  neuralCanvas.width = window.innerWidth;
+  neuralCanvas.height = window.innerHeight;
+}
+
+window.addEventListener('resize', resizeNeuralCanvas);
+resizeNeuralCanvas();
+
+class NeuralNode {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.vx = (Math.random() - 0.5) * 0.5;
+    this.vy = (Math.random() - 0.5) * 0.5;
+    this.radius = Math.random() * 2 + 1;
+    this.opacity = Math.random() * 0.5 + 0.3;
+    this.pulse = Math.random() * Math.PI * 2;
+  }
+
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.pulse += 0.02;
+
+    if (this.x < 0 || this.x > neuralCanvas.width) this.vx *= -1;
+    if (this.y < 0 || this.y > neuralCanvas.height) this.vy *= -1;
+  }
+
+  draw() {
+    const pulsing = Math.sin(this.pulse) * 0.3 + 0.7;
+    neuralCtx.fillStyle = `rgba(0, 217, 255, ${this.opacity * pulsing})`;
+    neuralCtx.shadowColor = 'rgba(0, 217, 255, 0.6)';
+    neuralCtx.shadowBlur = 10;
+    neuralCtx.beginPath();
+    neuralCtx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    neuralCtx.fill();
+    neuralCtx.shadowBlur = 0;
+  }
+}
+
+const nodes = [];
+for (let i = 0; i < 25; i++) {
+  nodes.push(new NeuralNode(Math.random() * neuralCanvas.width, Math.random() * neuralCanvas.height));
+}
+
+let mouseX = neuralCanvas.width / 2;
+let mouseY = neuralCanvas.height / 2;
+
+document.addEventListener('mousemove', (e) => {
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+});
+
+function drawNeuralNetwork() {
+  neuralCtx.clearRect(0, 0, neuralCanvas.width, neuralCanvas.height);
+
+  // Update and draw nodes
+  nodes.forEach((node) => {
+    node.update();
+    node.draw();
+  });
+
+  // Draw connections
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const dx = nodes[i].x - nodes[j].x;
+      const dy = nodes[i].y - nodes[j].y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance < 150) {
+        const opacity = (1 - distance / 150) * 0.3;
+        neuralCtx.strokeStyle = `rgba(0, 217, 255, ${opacity})`;
+        neuralCtx.lineWidth = 1;
+        neuralCtx.beginPath();
+        neuralCtx.moveTo(nodes[i].x, nodes[i].y);
+        neuralCtx.lineTo(nodes[j].x, nodes[j].y);
+        neuralCtx.stroke();
+      }
+    }
+  }
+
+  // Draw connection to mouse
+  nodes.forEach((node) => {
+    const dx = node.x - mouseX;
+    const dy = node.y - mouseY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    if (distance < 200) {
+      const opacity = (1 - distance / 200) * 0.4;
+      neuralCtx.strokeStyle = `rgba(0, 217, 255, ${opacity})`;
+      neuralCtx.lineWidth = 1.5;
+      neuralCtx.beginPath();
+      neuralCtx.moveTo(node.x, node.y);
+      neuralCtx.lineTo(mouseX, mouseY);
+      neuralCtx.stroke();
+    }
+  });
+
+  requestAnimationFrame(drawNeuralNetwork);
+}
+
+drawNeuralNetwork();
+
+// Optional: Generate ambient quantum tones using Web Audio API
+function initAudio() {
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  const createQuantumTone = () => {
+    const now = audioCtx.currentTime;
+
+    // Create a pad-like ambient sound with quantum tones
+    const osc1 = audioCtx.createOscillator();
+    const osc2 = audioCtx.createOscillator();
+    const osc3 = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    const filter = audioCtx.createBiquadFilter();
+
+    osc1.type = 'sine';
+    osc2.type = 'sine';
+    osc3.type = 'sine';
+
+    // Quantum frequencies (Hz)
+    osc1.frequency.setValueAtTime(404, now);
+    osc2.frequency.setValueAtTime(404 * 1.5, now);
+    osc3.frequency.setValueAtTime(404 * 2, now);
+
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(800, now);
+
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.02, now + 0.5);
+    gain.gain.linearRampToValueAtTime(0, now + 8);
+
+    osc1.connect(filter);
+    osc2.connect(filter);
+    osc3.connect(filter);
+    filter.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc1.start(now);
+    osc2.start(now);
+    osc3.start(now);
+
+    osc1.stop(now + 8);
+    osc2.stop(now + 8);
+    osc3.stop(now + 8);
+  };
+
+  // Play a tone every 8 seconds
+  setInterval(createQuantumTone, 8000);
+}
+
+// Initialize audio on user interaction
+document.addEventListener('click', initAudio, { once: true });
+document.addEventListener('scroll', initAudio, { once: true });
+</script>
