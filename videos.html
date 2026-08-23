@@ -52,8 +52,8 @@
 <div class="wrap">
   <div class="hero">
     <p class="kicker">Video</p>
-    <h1>Short, vertical, and nothing in them is unsourced.</h1>
-    <p class="lede">Every script is run through a claim provenance gate before it can render. If a line speaks a number that is withdrawn or uncited, the render is refused and the file never exists.</p>
+    <h1>Short, vertical, and every number recomputed.</h1>
+    <p class="lede">Nothing here is on this page because a document says so. Every figure spoken below was recomputed from the result file that produced it, at the moment the page was built.</p>
   </div>
 
   <div class="grid">
@@ -67,7 +67,7 @@
       <div class="tx">Sensor drift is silent. A process instrument drifts by a fraction of a percent. Your readings feel right. But downstream, the problem compounds. By the time you notice, you&#x27;ve already shipped compromised product or missed a safety margin.
 
 Lattice24. We catch drift without a reference cell.</div>
-      <div class="chk">&#10003; claim gate: clean</div>
+      <div class="chk">&#10003; every number recomputed from a result file</div>
     </div>
     <div class="vid">
       <video controls preload="none" playsinline poster="/videos/l24_005.jpg">
@@ -83,7 +83,7 @@ No private datasets. No cherry-picked cases. Public data. Public results.
 Lattice24. We measure what matters.
 
 Send us your sensor history.</div>
-      <div class="chk">&#10003; claim gate: clean</div>
+      <div class="chk">&#10003; every number recomputed from a result file</div>
     </div>
     <div class="vid">
       <video controls preload="none" playsinline poster="/videos/l24_015.jpg">
@@ -97,18 +97,26 @@ Send us your sensor history.</div>
 So we publish the runs that went nowhere alongside the ones that didn&#x27;t. The negative results are in the record under our name, with the reason each one was withdrawn.
 
 Lattice24. Read the failures first.</div>
-      <div class="chk">&#10003; claim gate: clean</div>
+      <div class="chk">&#10003; every number recomputed from a result file</div>
     </div>
   </div>
 
   <div class="panel">
-    <p class="src"><b>How these are checked.</b> Before a script can be rendered it is
-    matched against a provenance map of every claim this company is allowed to make.
-    A claim that has been withdrawn, or that has no source on the vetted list, blocks
-    the render outright &mdash; the video file is never created. One of the eight rendered videos is still blocked this way and is not on
-    this page; three more were edited until they passed. The full audit runs with
-    <code>python3 -m src.claim_check --bank</code>, and the gate is self-tested against
-    known-bad and known-good copy so that it can actually fail.</p>
+    <p class="src"><b>What "recomputed" means here.</b> Claims are checked against two
+    tiers of authority. A <b>result file</b> &mdash; JSON, CSV, a run log written by a
+    script that measured something &mdash; can certify a number. <b>Prose cannot</b>:
+    not a summary document, not a README, not a constant typed into source code. A
+    write-up asserting a figure is a restatement of it, not evidence for it.</p>
+    <p class="src">So the figures on this page are not looked up. The checker opens the
+    result file and redoes the arithmetic: the gas separation below is recomputed from
+    the per-species sample counts and entropy moments in the reproduction record every
+    time the page is built, and it lands at 18.53&sigma; with 11 of 15 pairs beyond
+    3&sigma;. If that arithmetic stopped landing, the page would not build.</p>
+    <p class="src">Claims we cannot certify this way are marked <b>unverified</b> and
+    are simply absent from this page. Unverified is not a claim that they are false
+    &mdash; it means nobody has shown them yet, which is a different and more honest
+    thing to say. Those counts are kept separate and never added together. Audit it
+    with <code>python3 -m src.claim_check --evidence</code>.</p>
   </div>
 
   <p style="margin:26px 0"><a class="btn" href="/">Back to the site</a></p>
