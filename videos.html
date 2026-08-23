@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Videos — Lattice24</title>
+<meta name="description" content="Short vertical videos on sensor drift detection without a reference cell. Every number spoken is checked against the published-claim whitelist before the file is rendered.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+
+  :root{--ink:#E8F4FF;--ink2:#A8C5E0;--paper:#000510;--card:#0A0E18;--green:#00D9FF;
+        --green-dk:#00B8D4;--line:#1A2540;--steel:#6B7E96;
+        --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  body{background:linear-gradient(135deg,#000510 0%,#050115 50%,#001030 100%);background-attachment:fixed}
+  .panel{background:rgba(10,14,24,.8);border:1px solid var(--green);
+         box-shadow:0 0 20px rgba(0,217,255,.15),inset 0 0 20px rgba(0,217,255,.05);backdrop-filter:blur(10px)}
+  .kicker{text-shadow:0 0 8px rgba(0,217,255,.5)}
+  .logo span{color:var(--green)}
+  .btn{background:var(--green);color:#001020}
+  .btn:hover{background:var(--green-dk)}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       color:var(--ink);line-height:1.6;font-size:17px}
+  .wrap{max-width:960px;margin:0 auto;padding:0 22px}
+  header{border-bottom:1px solid var(--line);padding:16px 0}
+  .logo{font-weight:800;font-size:1.2rem;letter-spacing:.04em;text-decoration:none;color:var(--ink)}
+  .hero{padding:48px 0 8px}
+  .kicker{font-family:var(--mono);font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;
+          color:var(--green);margin-bottom:12px}
+  h1{font-size:clamp(1.7rem,4.2vw,2.4rem);line-height:1.15;letter-spacing:-.02em;margin-bottom:14px}
+  .lede{color:var(--ink2);max-width:46rem}
+  .panel{border-radius:10px;padding:22px;margin:22px 0}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:26px;margin:34px 0}
+  .vid{display:flex;flex-direction:column}
+  .vid video{width:100%;max-width:340px;aspect-ratio:9/16;border-radius:12px;border:1px solid var(--line);
+             background:#000;display:block;margin:0 auto}
+  .vid h2{font-size:1.05rem;margin:14px 0 4px}
+  .meta{font-family:var(--mono);font-size:.72rem;color:var(--steel);letter-spacing:.05em}
+  .tx{color:var(--ink2);font-size:.93rem;margin-top:10px;white-space:pre-line}
+  .chk{font-family:var(--mono);font-size:.72rem;color:var(--green);margin-top:10px}
+  .btn{display:inline-block;padding:11px 20px;border-radius:7px;text-decoration:none;
+       font-weight:600;border:0;font-size:.96rem;cursor:pointer}
+  .src{font-size:.82rem;color:var(--steel)}
+  footer{border-top:1px solid var(--line);margin-top:40px;padding:22px 0 44px;color:var(--steel);font-size:.86rem}
+  a{color:var(--green)}
+  @media (max-width:640px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><div class="wrap"><a class="logo" href="/">LATTICE<span>24</span></a></div></header>
+
+<div class="wrap">
+  <div class="hero">
+    <p class="kicker">Video</p>
+    <h1>Short, vertical, and nothing in them is unsourced.</h1>
+    <p class="lede">Every script is run through a claim provenance gate before it can render. If a line speaks a number that is withdrawn or uncited, the render is refused and the file never exists.</p>
+  </div>
+
+  <div class="grid">
+    <div class="vid">
+      <video controls preload="none" playsinline poster="/videos/l24_001.jpg">
+        <source src="/videos/l24_001.mp4" type="video/mp4">
+        Your browser cannot play this video. <a href="/videos/l24_001.mp4">Download it</a>.
+      </video>
+      <h2>The Problem</h2>
+      <div class="meta">21 SECONDS · 1080&times;1920 · l24_001</div>
+      <div class="tx">Sensor drift is silent. A process instrument drifts by a fraction of a percent. Your readings feel right. But downstream, the problem compounds. By the time you notice, you&#x27;ve already shipped compromised product or missed a safety margin.
+
+Lattice24. We catch drift without a reference cell.</div>
+      <div class="chk">&#10003; claim gate: clean</div>
+    </div>
+    <div class="vid">
+      <video controls preload="none" playsinline poster="/videos/l24_005.jpg">
+        <source src="/videos/l24_005.mp4" type="video/mp4">
+        Your browser cannot play this video. <a href="/videos/l24_005.mp4">Download it</a>.
+      </video>
+      <h2>Separation You Can Count On</h2>
+      <div class="meta">26 SECONDS · 1080&times;1920 · l24_005</div>
+      <div class="tx">On a public industrial gas array—13,910 samples, six gas types—our engine achieved 18.5 sigma separation. That&#x27;s not close calls. That&#x27;s signal.
+
+No private datasets. No cherry-picked cases. Public data. Public results.
+
+Lattice24. We measure what matters.
+
+Send us your sensor history.</div>
+      <div class="chk">&#10003; claim gate: clean</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <p class="src"><b>How these are checked.</b> Before a script can be rendered it is
+    matched against a provenance map of every claim this company is allowed to make.
+    A claim that has been withdrawn, or that has no source on the vetted list, blocks
+    the render outright &mdash; the video file is never created. Four of the eight videos
+    in the queue were blocked this way and are not on this page. The full audit runs with
+    <code>python3 -m src.claim_check --bank</code>, and the gate is self-tested against
+    known-bad and known-good copy so that it can actually fail.</p>
+  </div>
+
+  <p style="margin:26px 0"><a class="btn" href="/">Back to the site</a></p>
+  <p class="src"><a href="/audit.html">Free sensor entropy audit</a> · <a href="/send-data.html">Send one CSV, get one report</a></p>
+
+  <footer><p>Lattice24 · Sylvan Lake, Alberta · <a href="mailto:jim@lattice24.com">jim@lattice24.com</a></p></footer>
+</div>
+</body>
+</html>
