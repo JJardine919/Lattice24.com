@@ -85,14 +85,28 @@ Lattice24. We measure what matters.
 Send us your sensor history.</div>
       <div class="chk">&#10003; claim gate: clean</div>
     </div>
+    <div class="vid">
+      <video controls preload="none" playsinline poster="/videos/l24_015.jpg">
+        <source src="/videos/l24_015.mp4" type="video/mp4">
+        Your browser cannot play this video. <a href="/videos/l24_015.mp4">Download it</a>.
+      </video>
+      <h2>We Publish What Fails</h2>
+      <div class="meta">19 SECONDS · 1080&times;1920 · l24_015</div>
+      <div class="tx">If a method only works on the data its author chose, it doesn&#x27;t work.
+
+So we publish the runs that went nowhere alongside the ones that didn&#x27;t. The negative results are in the record under our name, with the reason each one was withdrawn.
+
+Lattice24. Read the failures first.</div>
+      <div class="chk">&#10003; claim gate: clean</div>
+    </div>
   </div>
 
   <div class="panel">
     <p class="src"><b>How these are checked.</b> Before a script can be rendered it is
     matched against a provenance map of every claim this company is allowed to make.
     A claim that has been withdrawn, or that has no source on the vetted list, blocks
-    the render outright &mdash; the video file is never created. Four of the eight videos
-    in the queue were blocked this way and are not on this page. The full audit runs with
+    the render outright &mdash; the video file is never created. One of the eight rendered videos is still blocked this way and is not on
+    this page; three more were edited until they passed. The full audit runs with
     <code>python3 -m src.claim_check --bank</code>, and the gate is self-tested against
     known-bad and known-good copy so that it can actually fail.</p>
   </div>
