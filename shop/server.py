@@ -98,8 +98,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         p = self.path.split("?")[0]
-        if p == "/shop/upload.html":
-            return self._send(200, (STATIC / "upload.html").read_text())
+        if p in ("/shop/upload.html", "/shop/compute.html"):
+            return self._send(200, (STATIC / Path(p).name).read_text())
         parts = p.strip("/").split("/")
         if p.startswith("/report/") and len(parts) == 2:
             try: m = load(parts[1])
@@ -116,10 +116,20 @@ class Handler(BaseHTTPRequestHandler):
             if m.get("accepted"):
                 cta = "<p><b>Agreement received.</b> We will be in touch with the savings-split paperwork.</p>"
             else:
-                cta = ("<h2>The offer</h2><p>This report is free. If it finds recoverable loss "
-                       "(leaked product, wasted compute, avoidable emissions), we fix or monitor it "
-                       "<b>at our cost</b>, and we keep <b>" + SHARE_PCT + "% of first-year verified savings</b>. "
-                       "You keep " + str(100-int(SHARE_PCT)) + "% of money that currently leaks into the air.</p>"
+                if m.get("market") == "compute":
+                    pitch = ("<h2>The offer</h2><p>This report is free. If your signals feed a trading "
+                             "or research pipeline, the redundant recompute it exposes is what we gate "
+                             "before execution. First published result: <b>88% of financial-signal "
+                             "compute removed</b> at unchanged decision quality (DOI "
+                             "10.5281/zenodo.18763166). We deploy at our cost and keep <b>" + SHARE_PCT +
+                             "% of first-year verified cloud savings</b>; you keep " +
+                             str(100-int(SHARE_PCT)) + "% - and every gated MW is capacity you get back.</p>")
+                else:
+                    pitch = ("<h2>The offer</h2><p>This report is free. If it finds recoverable loss "
+                             "(leaked product, wasted compute, avoidable emissions), we fix or monitor it "
+                             "<b>at our cost</b>, and we keep <b>" + SHARE_PCT + "% of first-year verified savings</b>. "
+                             "You keep " + str(100-int(SHARE_PCT)) + "% of money that currently leaks into the air.</p>")
+                cta = (pitch +
                        "<form method=\"post\" action=\"/api/accept/{j}\">"
                        "<input type=hidden name=job value={j}>"
                        "<button class=btn type=submit>I want the savings split &mdash; contact me</button></form>").replace("{j}", parts[1])
@@ -199,7 +209,8 @@ class Handler(BaseHTTPRequestHandler):
         job = uuid.uuid4().hex[:16]
         meta = {"csv": csv, "email": (req.get("email") or "")[:120],
                 "label_col": (req.get("label_col") or "")[:64],
-                "group_col": (req.get("group_col") or "")[:64], "paid": False}
+                "group_col": (req.get("group_col") or "")[:64], "paid": False,
+                "market": "compute" if req.get("market") == "compute" else "methane"}
         (job_dir(job)).mkdir(parents=True, exist_ok=True)
         run_engine(job, meta)
         url = f"{SITE}/report/{job}"
