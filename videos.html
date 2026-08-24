@@ -60,17 +60,16 @@
   </div>
 
   <div class="grid">
-    <div class="vid">
-      <video controls preload="none" playsinline poster="/videos/l24_001.jpg">
-        <source src="/videos/l24_001.mp4" type="video/mp4">
-        Your browser cannot play this video. <a href="/videos/l24_001.mp4">Download it</a>.
-      </video>
-      <h2>The Problem</h2>
-      <div class="meta">21 SECONDS · 1080&times;1920 · l24_001</div>
-      <div class="tx">Sensor drift is silent. A process instrument drifts by a fraction of a percent. Your readings feel right. But downstream, the problem compounds. By the time you notice, you&#x27;ve already shipped compromised product or missed a safety margin.
+    <div class="vid withdrawn">
+      <h2>Pulled 2026-08-24 &mdash; The Problem</h2>
+      <div class="meta">UNSHOWN, NOT REFUTED &middot; l24_001</div>
+      <div class="tx">This video was pulled on 2026-08-24 because it closed on a capability we have not shown: "We catch drift without a reference cell."
 
-Lattice24. We catch drift without a reference cell.</div>
-      <div class="chk">&#10003; every number recomputed from a result file</div>
+Nothing contradicts that sentence. It is not refuted, and this is deliberately not filed with the withdrawal above &mdash; those two videos were taken down because a control killed the claim, which is a different and worse thing. This one came down because when we asked which result file backed it, there wasn't one.
+
+What we do have is real and is less than the sentence claimed. In branch_work/18809407_gas/results/claim2_drift.json, ethanol's per-batch entropy rises from 0.1597 at batch 1 to 0.4373 at batch 10, and it rises on all 16 sensors. That is a monotone increase on data that is drifting. It is not a detection result: there is no alarm, no threshold, no false-positive rate, and no comparison against any method that does use a reference cell. Drift is a ramp, and this engine responds to ramps generally, so a rising number on drifting data is the weakest possible evidence that anything was caught.
+
+We are not replacing it with a softer version of the same claim. It comes back when there is a result file showing drift detected, with the rate at which it fires on sensors that are not drifting.</div>
     </div>
     <div class="vid">
       <video controls preload="none" playsinline poster="/videos/l24_015.jpg">
