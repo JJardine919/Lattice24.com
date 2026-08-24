@@ -32,6 +32,9 @@
   .panel{border-radius:10px;padding:22px;margin:22px 0}
   .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:26px;margin:34px 0}
   .vid{display:flex;flex-direction:column}
+  .vid.withdrawn{border:1px solid var(--steel);padding:18px;opacity:.85}
+  .vid.withdrawn h2{color:var(--steel)}
+  .vid.withdrawn .tx{white-space:pre-wrap}
   .vid video{width:100%;max-width:340px;aspect-ratio:9/16;border-radius:12px;border:1px solid var(--line);
              background:#000;display:block;margin:0 auto}
   .vid h2{font-size:1.05rem;margin:14px 0 4px}
@@ -70,22 +73,6 @@ Lattice24. We catch drift without a reference cell.</div>
       <div class="chk">&#10003; every number recomputed from a result file</div>
     </div>
     <div class="vid">
-      <video controls preload="none" playsinline poster="/videos/l24_005.jpg">
-        <source src="/videos/l24_005.mp4" type="video/mp4">
-        Your browser cannot play this video. <a href="/videos/l24_005.mp4">Download it</a>.
-      </video>
-      <h2>Separation You Can Count On</h2>
-      <div class="meta">26 SECONDS · 1080&times;1920 · l24_005</div>
-      <div class="tx">On a public industrial gas array—13,910 samples, six gas types—our engine achieved 18.5 sigma separation. That&#x27;s not close calls. That&#x27;s signal.
-
-No private datasets. No cherry-picked cases. Public data. Public results.
-
-Lattice24. We measure what matters.
-
-Send us your sensor history.</div>
-      <div class="chk">&#10003; every number recomputed from a result file</div>
-    </div>
-    <div class="vid">
       <video controls preload="none" playsinline poster="/videos/l24_015.jpg">
         <source src="/videos/l24_015.mp4" type="video/mp4">
         Your browser cannot play this video. <a href="/videos/l24_015.mp4">Download it</a>.
@@ -98,6 +85,19 @@ So we publish the runs that went nowhere alongside the ones that didn&#x27;t. Th
 
 Lattice24. Read the failures first.</div>
       <div class="chk">&#10003; every number recomputed from a result file</div>
+    </div>
+    <div class="vid withdrawn">
+      <h2>Withdrawn 2026-08-23 — Separation You Can Count On</h2>
+      <div class="meta">CLAIM WITHDRAWN · l24_005</div>
+      <div class="tx">These video was withdrawn on 2026-08-23 on a matched control that had not been run before. It rested on "six gases separate by entropy signature at 18.5 sigma" from a public 13,910-sample gas array.
+
+The gases do not sit evenly across the ten measurement batches, so the pooled comparison mixes gas with batch. Holding batch fixed and shuffling only the gas labels — 1000 draws, each pseudo-gas keeping the real gas's exact per-batch counts — reaches 18.44 sigma in 247 of them. p = 0.25. The control we had published, p = 0.003, permutes all 13,910 samples at once, which destroys the batch structure along with the labels, so it never tested this.
+
+Separately, the recipe's rolling window steps by one sample, so consecutive windows share 19 of their 20 readings. Lag-1 autocorrelation is 0.986 and the effective sample size is about 46 against a naive 1622 — the sigma values in this family are inflated roughly sixfold, independent of the batch question.
+
+What survives, stated plainly: inside batch 7 alone the separation is real and large — 36.42 sigma observed, and none of 1000 shuffles came near it. Inside batch 10 alone there is nothing — 5.94 observed against a shuffled mean of 6.85, p = 0.72. Two batches, opposite answers. That is a genuine per-batch result, and it is not "six gases separate."
+
+Control: qbh/green2_gas_within_batch_null.json. Nothing replaces it yet; we will not re-publish the number until it stands on a control that can kill it.</div>
     </div>
   </div>
 
