@@ -110,9 +110,18 @@ Control: qbh/green2_gas_within_batch_null.json. Nothing replaces it yet; we will
     script that measured something &mdash; can certify a number. <b>Prose cannot</b>:
     not a summary document, not a README, not a constant typed into source code. A
     write-up asserting a figure is a restatement of it, not evidence for it.</p>
-    <p class="src">So the figures on this page are not looked up. The checker opens the
-    result file and redoes the arithmetic every time the page is built. If that
+    <p class="src">So the figures in the video cards above are not looked up. The checker
+    opens the result file and redoes the arithmetic every time the page is built. If that
     arithmetic stopped landing, the page would not build.</p>
+    <p class="src">Scope, stated exactly, because the sentence above used to say "the
+    figures on this page" and that was wider than the truth: the checker parses video
+    cards. It does not parse the withdrawal notices. The numbers inside those notices —
+    including every figure added on 2026-08-23 — are cited to result files by hand and are
+    not gated by the build. Naively widening the parser is not the fix: the checker matches
+    tokens, not statements, so a notice that quotes a withdrawn claim in order to retract it
+    reads as an assertion of it and comes back REFUTED. Measured, both notices do. Telling
+    "this is false" from "this is true" is a distinction the checker does not have, and
+    saying so is more honest than a gate that appears to cover text it never reads.</p>
     <p class="src">The gas separation that used to appear here still recomputes, and it
     lands at <b>18.44&sigma;</b> with 11 of 15 pairs beyond 3&sigma;. It read 18.53&sigma;
     until 2026-08-23, when the divisor was corrected: the check had been dividing by the
