@@ -94,7 +94,9 @@ The gases do not sit evenly across the ten measurement batches, so the pooled co
 
 Separately, the recipe's rolling window steps by one sample, so consecutive windows share 19 of their 20 readings. Lag-1 autocorrelation is 0.986 and the effective sample size is about 46 against a naive 1622 — the sigma values in this family are inflated roughly sixfold, independent of the batch question.
 
-What survives, stated plainly: inside batch 7 alone the separation is real and large — 36.42 sigma observed, and none of 1000 shuffles came near it. Inside batch 10 alone there is nothing — 5.94 observed against a shuffled mean of 6.85, p = 0.72. Two batches, opposite answers. That is a genuine per-batch result, and it is not "six gases separate."
+What survives, stated plainly, and stated as a property of this statistic rather than of the data: on entropy moments over rolling 20-sample windows, inside batch 7 alone the separation is real and large — 36.42 sigma observed, and none of 1000 shuffles came near it. On that same statistic, inside batch 10 alone there is nothing — 5.94 observed against a shuffled mean of 6.85, p = 0.72. Two batches, opposite answers. That is a genuine per-batch result, and it is not "six gases separate."
+
+The contrast between those two batches belongs to the recipe, not to the samples. Measured 2026-08-23: a different window-level test on the same data — non-overlapping 24-row windows instead of rolling 20-sample ones — finds a gas effect inside batch 10 that is larger than the one inside batch 7, at the floor of its own permutation null. That restores nothing withdrawn above, we are not building on it, and it is recorded here for one reason: a withdrawal notice that overstates its own contrast is the same defect one level down. "Nothing in batch 10" was our result on one recipe. It is not a property of batch 10. Result file: qbh/gas_window_signal_present.json.
 
 Control: qbh/green2_gas_within_batch_null.json. Nothing replaces it yet; we will not re-publish the number until it stands on a control that can kill it.</div>
     </div>
