@@ -88,7 +88,7 @@ Lattice24. Read the failures first.</div>
     <div class="vid withdrawn">
       <h2>Withdrawn 2026-08-23 — Separation You Can Count On</h2>
       <div class="meta">CLAIM WITHDRAWN · l24_005</div>
-      <div class="tx">These video was withdrawn on 2026-08-23 on a matched control that had not been run before. It rested on "six gases separate by entropy signature at 18.5 sigma" from a public 13,910-sample gas array.
+      <div class="tx">This video was withdrawn on 2026-08-23 on a matched control that had not been run before. It rested on "six gases separate by entropy signature at 18.5 sigma" from a public 13,910-sample gas array.
 
 The gases do not sit evenly across the ten measurement batches, so the pooled comparison mixes gas with batch. Holding batch fixed and shuffling only the gas labels — 1000 draws, each pseudo-gas keeping the real gas's exact per-batch counts — reaches 18.44 sigma in 247 of them. p = 0.25. The control we had published, p = 0.003, permutes all 13,910 samples at once, which destroys the batch structure along with the labels, so it never tested this.
 
@@ -107,10 +107,18 @@ Control: qbh/green2_gas_within_batch_null.json. Nothing replaces it yet; we will
     not a summary document, not a README, not a constant typed into source code. A
     write-up asserting a figure is a restatement of it, not evidence for it.</p>
     <p class="src">So the figures on this page are not looked up. The checker opens the
-    result file and redoes the arithmetic: the gas separation below is recomputed from
-    the per-species sample counts and entropy moments in the reproduction record every
-    time the page is built, and it lands at 18.53&sigma; with 11 of 15 pairs beyond
-    3&sigma;. If that arithmetic stopped landing, the page would not build.</p>
+    result file and redoes the arithmetic every time the page is built. If that
+    arithmetic stopped landing, the page would not build.</p>
+    <p class="src">The gas separation that used to appear here still recomputes, and it
+    lands at <b>18.44&sigma;</b> with 11 of 15 pairs beyond 3&sigma;. It read 18.53&sigma;
+    until 2026-08-23, when the divisor was corrected: the check had been dividing by the
+    per-species <i>sample</i> count on a statistic computed over <i>windows</i>, of which
+    there are 20 fewer per species. 18.44 is also the value the matched control was built
+    against, so the two now agree.</p>
+    <p class="src">That arithmetic is not what withdrew the claim, and recomputing a
+    number is not the same as testing it. A control did &mdash; see the withdrawal
+    notice above. A figure can be reproducible and still be measuring the wrong
+    thing.</p>
     <p class="src">Claims we cannot certify this way are marked <b>unverified</b> and
     are simply absent from this page. Unverified is not a claim that they are false
     &mdash; it means nobody has shown them yet, which is a different and more honest
