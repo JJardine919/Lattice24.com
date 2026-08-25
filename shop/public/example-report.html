@@ -1,0 +1,66 @@
+<!doctype html><meta charset=utf-8><title>Lattice24 report</title><style>body{background:#F5F4F1;color:#16191B;font-family:Georgia,serif;max-width:72ch;margin:3rem auto;padding:0 1rem;line-height:1.6}pre{white-space:pre-wrap;background:#fff;border:1px solid #DBD9D3;border-left:3px solid #A9601A;padding:1.2rem;font-size:.86em;overflow-x:auto}a.btn{display:inline-block;background:#A9601A;color:#fff;padding:.7em 1.4em;text-decoration:none;border-radius:4px;font-family:sans-serif}</style><h1>Your report</h1><pre># Sensor / process report
+
+File `input.csv` · 1,024 rows · 6 usable channels
+Engine checksum 34.031437 (required 34.031437) · 2026-08-25
+
+Read as 127 windows of 8 consecutive samples across 6 channels: t, pulse_u_t, noise_beta_z, sigma_x_expect, sigma_y_expect, sigma_z_expect
+
+## Encoder check
+
+| bin | share |
+|---|---|
+| < -0.2% | 0.307 |
+| -0.2..-0.05% | 0.004 |
+| flat | 0.206 |
+| +0.05..0.2% | 0.093 |
+| > +0.2% | 0.389 |
+
+End-bin mass **0.6964** on the standard scale.
+ Healthy — the channel has room to move. (Saturation would be >0.9.)
+
+## Result
+
+No label column given, so this describes structure rather than comparing groups.
+
+| channel | order effect | p |
+|---|---|---|
+| entropy | 0.02267 | 1.0000 |
+| chaos | 0.00000 | 1.0000 |
+| control | 0.00000 | 1.0000 |
+| anomaly | 0.02089 | 1.0000 |
+
+p compares the real sample order against shuffled order. A high p means the readings carry no sequence structure — which is a result, not a failure.
+
+## Read this before acting on the above
+
+- Only 6 channels supplied; the engine takes 16. The remaining slots are zero-filled, which weakens the read.
+
+## What this does not tell you
+
+- It does not say a channel is *correct*, only whether it moves.
+- It does not replace your instruments or your calibration schedule.
+- Nothing here was fitted to your data, so nothing is tuned to flatter it. The same pipeline runs on every file unchanged.
+
+---
+Lattice24 · James Jardine · ORCID 0009-0004-9073-7192
+## Order-invariance annex (engine-free arms)
+
+Every channel was screened with the two surrogate arms wired into this
+shop's engine (IAAFT spectral null + permutation entropy), plus plain
+lag-1 autocorrelation as the engine-free baseline.
+
+| channel | windows | INVARIANT | IAAFT med z | pe3 fires | lag-1 fires |
+|---|---|---|---|---|---|
+| t | 3 | 0/3 | -2.47 | 0/3 | 3/3 |
+| pulse_u_t | 3 | 0/3 | -1.82 | 2/3 | 3/3 |
+| noise_beta_z | 3 | 3/3 | +0.32 | 1/3 | 0/3 |
+| sigma_x_expect | 3 | 3/3 | +0.98 | 0/3 | 0/3 |
+
+Reading this table:
+- **INVARIANT** means the ordering carries nothing beyond the values themselves.
+  That is information, not a failure.
+- A high **lag-1** rate with all-invariant windows is expected: simple persistence
+  is real structure, but it is not what the collapse engine measures.
+- The permutation-entropy arm is deliberately cautious at 24 points; its silence
+  is weak evidence, its fire is strong.
+</pre><h2>The offer</h2><p>This report is free. If it finds recoverable loss (leaked product, wasted compute, avoidable emissions), we fix or monitor it <b>at our cost</b>, and we keep <b>25% of first-year verified savings</b>. You keep 75% of money that currently leaks into the air.</p><form method="post" action="/api/accept/338e7266c51e4b42"><input type=hidden name=job value=338e7266c51e4b42><button class=btn type=submit>I want the savings split &mdash; contact me</button></form>
