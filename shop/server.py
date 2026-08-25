@@ -98,8 +98,12 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         p = self.path.split("?")[0]
-        if p in ("/shop/upload.html", "/shop/compute.html"):
-            return self._send(200, (STATIC / Path(p).name).read_text())
+        if p.startswith("/shop/") and p.endswith(".html"):
+            name = Path(p).name
+            f = STATIC / name
+            if f.exists() and "/" not in name and ".." not in name:
+                return self._send(200, f.read_text())
+            return self._send(404, md_page("404", ""))
         parts = p.strip("/").split("/")
         if p.startswith("/report/") and len(parts) == 2:
             try: m = load(parts[1])
