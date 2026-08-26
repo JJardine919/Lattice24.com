@@ -1,100 +1,112 @@
 <meta charset="utf-8">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<title>Lattice24 — Send one file. Get the truth.</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Send one CSV you already log. Get back what moved, what it costs, and what it cannot support. Free first file. Notes on both sides.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<title>LATTICE24 — A drifted sensor doesn't alarm.</title>
+<meta name="description" content="One file. One report. We catch drift from data you already log — no reference, no visit. Notes quoted back. Free first file.">
 <style>
-  :root{--ground:#040508;--panel:#0E1212;--ink:#F2EDE8;--ink-soft:#C9B8B0;--ink-faint:#8A7870;--rule:#2A1A1A;--blood:#C4121F;--blood-glow:rgba(196,18,31,0.55);--forest:#0F4C2F;--forest-glow:rgba(15,76,47,0.5);--measure:72ch}
-  *{box-sizing:border-box}
-  @keyframes fadeIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
-  @keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
-  .page{background:radial-gradient(1100px 700px at 78% 12%,rgba(196,18,31,.18),transparent 60%),radial-gradient(900px 600px at 12% 88%,rgba(15,76,47,.22),transparent 65%),linear-gradient(180deg,#020407 0%,#040508 100%);color:var(--ink);font-family:"Helvetica Neue",Inter,system-ui,sans-serif;min-height:100vh;overflow:hidden;position:relative}
-  .page::after{content:'';position:fixed;inset:0;background:radial-gradient(600px 400px at 50% 0%,rgba(196,18,31,.08),transparent 70%);pointer-events:none}
-  canvas{position:fixed;inset:0;width:100%;height:100vh;pointer-events:none}
-  #planetsCanvas{z-index:0;opacity:.95}
-  #neuralCanvas{z-index:1;opacity:.45}
-  .wrap{position:relative;z-index:2;max-width:1120px;margin:0 auto;padding:18px 18px 14px;min-height:100vh;display:flex;flex-direction:column;gap:18px;animation:fadeIn .9s ease-out}
-  header{display:flex;align-items:center;justify-content:space-between;gap:16px}
-  .l24{line-height:0;text-decoration:none}
-  .l24mark{display:block;width:118px;height:auto;color:var(--blood);filter:drop-shadow(0 0 10px var(--blood-glow)) drop-shadow(0 0 18px rgba(15,76,47,.35))}
-  .nav{font-family:ui-monospace,Menlo,monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase}
-  .nav a{color:var(--ink-faint);text-decoration:none;border:1px solid transparent;padding:6px 8px}
-  .nav a:hover{color:var(--ink);border-color:rgba(196,18,31,.35);background:rgba(196,18,31,.08)}
-  .hero{display:grid;grid-template-columns:1.15fr .85fr;gap:22px;align-items:center;flex:1;min-height:0;padding:10px 0}
-  @media(max-width:860px){.hero{grid-template-columns:1fr;gap:14px}.wrap{min-height:auto}}
-  .eyebrow{font-family:ui-monospace,Menlo,monospace;font-size:.66rem;letter-spacing:.16em;text-transform:uppercase;color:var(--blood);text-shadow:0 0 8px var(--blood-glow);margin:0}
-  h1{font-size:clamp(2.2rem,5vw,3.6rem);line-height:.92;letter-spacing:-.03em;margin:.35rem 0 0;font-weight:900;text-transform:uppercase}
-  h1 .blood{background:linear-gradient(90deg,#FF2A2A 0%,var(--blood) 60%,#7A0A12 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 0 14px rgba(196,18,31,.35))}
-  h1 .forest{color:var(--forest);text-shadow:none}
-  .sub{font-size:1.08rem;line-height:1.45;color:var(--ink-soft);margin:10px 0 0;max-width:52ch}
-  .cta-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;align-items:center}
-  .btn{display:inline-flex;align-items:center;gap:8px;padding:13px 18px;font-weight:900;letter-spacing:.02em;text-decoration:none;font-size:.95rem;border:1px solid var(--blood);background:var(--blood);color:#fff;box-shadow:0 0 18px var(--blood-glow),0 8px 24px rgba(0,0,0,.45);transition:transform .15s}
-  .btn:hover{transform:translateY(-1px);box-shadow:0 0 24px var(--blood-glow),0 10px 28px rgba(0,0,0,.5)}
-  .btn--ghost{background:transparent;color:var(--blood);box-shadow:none}
-  .btn--ghost:hover{background:rgba(196,18,31,.08)}
-  .micro{font-family:ui-monospace,Menlo,monospace;font-size:.7rem;color:var(--ink-faint)}
-  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
-  @media(max-width:860px){.cards{grid-template-columns:1fr}}
-  .card{background:rgba(18,14,14,.72);border:1px solid rgba(196,18,31,.28);border-left:3px solid var(--blood);padding:12px 12px;backdrop-filter:blur(8px);box-shadow:0 0 18px rgba(196,18,31,.12)}
-  .card:nth-child(2){border-left-color:var(--forest);border-color:rgba(15,76,47,.32)}
-  .card h3{font-size:.82rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 6px;color:var(--blood)}
-  .card:nth-child(2) h3{color:var(--forest)}
-  .card p{font-size:.92rem;line-height:1.45;color:var(--ink-soft);margin:0}
-  .card strong{color:var(--ink)}
-  .right{background:rgba(14,18,14,.72);border:1px solid rgba(15,76,47,.32);border-left:3px solid var(--forest);padding:14px;backdrop-filter:blur(8px);box-shadow:0 0 18px rgba(15,76,47,.14)}
-  .right h3{font-size:.8rem;letter-spacing:.1em;text-transform:uppercase;color:var(--forest);margin:0 0 8px}
-  .field{width:100%;background:rgba(0,0,0,.35);border:1px solid rgba(196,18,31,.25);color:var(--ink);padding:9px 10px;font-family:Charter,Georgia,serif;font-size:.92rem}
-  .right .btn{width:100%;justify-content:center;margin-top:10px}
-  .proof{display:flex;gap:14px;flex-wrap:wrap;font-family:ui-monospace,Menlo,monospace;font-size:.68rem;color:var(--ink-faint);margin-top:8px}
-  .proof b{color:var(--ink-soft)}
-  footer{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-family:ui-monospace,Menlo,monospace;font-size:.68rem;color:var(--ink-faint);border-top:1px solid rgba(196,18,31,.25);padding-top:10px}
-  footer a{color:var(--ink-faint);text-decoration:none}
-  footer a:hover{color:var(--blood)}
+ :root{--blood:#C4121F;--blood2:#8B0A12;--forest:#0F4C2F;--forest2:#0B2E1F;--ink:#F2EDE8;--soft:#C9B8B0;--faint:#8A7870;--line:rgba(196,18,31,.28)}
+ *{box-sizing:border-box}html,body{margin:0}
+ .page{min-height:100vh;background:#020407;color:var(--ink);font-family:Inter,"Helvetica Neue",system-ui,sans-serif;position:relative;overflow:hidden}
+ canvas{position:fixed;inset:0;width:100%;height:100vh;pointer-events:none}
+ #sky{z-index:0}
+ #net{z-index:1;opacity:.38}
+ .wrap{position:relative;z-index:2;max-width:1160px;margin:0 auto;padding:20px 20px 16px;min-height:100vh;display:flex;flex-direction:column}
+ /* premium mark */
+ .top{display:flex;align-items:center;justify-content:space-between;gap:16px}
+ .brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--ink)}
+ .mark{width:44px;height:44px;display:grid;place-items:center;background:radial-gradient(120% 120% at 30% 20%,var(--blood),var(--blood2) 55%,#190505 100%);border:1px solid rgba(196,18,31,.5);box-shadow:0 0 16px rgba(196,18,31,.45),0 0 28px rgba(15,76,47,.25);position:relative}
+ .mark::after{content:'';position:absolute;inset:6px;border:1px solid rgba(255,255,255,.14);pointer-events:none}
+ .mark-grid{width:26px;height:26px;display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+ .mark-grid i{width:6px;height:6px;background:#fff;box-shadow:0 0 6px rgba(255,255,255,.8);border-radius:50%;display:block}
+ .mark-grid i:nth-child(2),.mark-grid i:nth-child(4),.mark-grid i:nth-child(6),.mark-grid i:nth-child(8){background:rgba(255,255,255,.55)}
+ .word{font-weight:900;letter-spacing:-.04em;line-height:1;font-size:22px}
+ .word span{color:var(--blood)}
+ .word small{display:block;font-weight:600;letter-spacing:.18em;font-size:9px;color:var(--faint);margin-top:2px}
+ .nav{font-family:ui-monospace,Menlo,monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;display:flex;gap:8px}
+ .nav a{color:var(--faint);text-decoration:none;padding:8px 10px;border:1px solid transparent}
+ .nav a:hover{color:var(--ink);border-color:var(--line);background:rgba(196,18,31,.08)}
+ /* hero - single screen */
+ .hero{flex:1;display:grid;grid-template-columns:1.1fr .9fr;gap:28px;align-items:center;padding:18px 0 10px}
+ @media(max-width:900px){.hero{grid-template-columns:1fr}.wrap{min-height:auto}}
+ .kicker{font-family:ui-monospace,Menlo,monospace;font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:var(--blood);margin:0}
+ h1{margin:8px 0 0;font-size:clamp(2.4rem,5.2vw,4.1rem);line-height:.88;letter-spacing:-.04em;font-weight:900;text-transform:uppercase}
+ h1 .a{color:var(--blood);text-shadow:0 0 18px rgba(196,18,31,.45)}
+ h1 .b{color:var(--forest);text-shadow:0 0 14px rgba(15,76,47,.35)}
+ .sub{margin:12px 0 0;color:var(--soft);font-size:1.08rem;line-height:1.45;max-width:52ch}
+ .sub strong{color:var(--ink)}
+ .actions{margin-top:18px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+ .btn{appearance:none;border:1px solid var(--blood);background:var(--blood);color:#fff;font-weight:900;letter-spacing:.02em;padding:14px 18px;text-decoration:none;display:inline-flex;align-items:center;gap:8px;box-shadow:0 0 18px rgba(196,18,31,.45),0 10px 28px rgba(0,0,0,.5);transition:transform .15s}
+ .btn:hover{transform:translateY(-1px)}
+ .btn--ghost{background:transparent;color:var(--blood);box-shadow:none}
+ .btn--ghost:hover{background:rgba(196,18,31,.08)}
+ .micro{font-family:ui-monospace,Menlo,monospace;font-size:.7rem;color:var(--faint)}
+ .mini{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
+ @media(max-width:900px){.mini{grid-template-columns:1fr}}
+ .mini div{background:rgba(14,12,12,.72);border:1px solid var(--line);border-left:3px solid var(--blood);padding:11px;backdrop-filter:blur(8px)}
+ .mini div:nth-child(2){border-left-color:var(--forest);border-color:rgba(15,76,47,.3)}
+ .mini h3{margin:0 0 6px;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--blood)}
+ .mini div:nth-child(2) h3{color:var(--forest)}
+ .mini p{margin:0;color:var(--soft);font-size:.92rem;line-height:1.45}
+ /* right card */
+ .panel{background:rgba(14,18,14,.74);border:1px solid rgba(15,76,47,.32);border-left:3px solid var(--forest);padding:16px;backdrop-filter:blur(10px);box-shadow:0 0 22px rgba(15,76,47,.14)}
+ .panel h3{margin:0 0 8px;font-size:.82rem;letter-spacing:.12em;text-transform:uppercase;color:var(--forest)}
+ .panel p{margin:0;color:var(--soft);font-size:.92rem;line-height:1.45}
+ .field{width:100%;margin-top:10px;background:rgba(0,0,0,.38);border:1px solid rgba(196,18,31,.25);color:var(--ink);padding:10px 11px;font-family:Charter,Georgia,serif;font-size:.95rem}
+ .panel .btn{width:100%;justify-content:center;margin-top:10px}
+ .meta{margin-top:10px;display:flex;gap:12px;flex-wrap:wrap;font-family:ui-monospace,Menlo,monospace;font-size:.68rem;color:var(--faint)}
+ .meta b{color:var(--soft)}
+ footer{margin-top:auto;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-family:ui-monospace,Menlo,monospace;font-size:.68rem;color:var(--faint);border-top:1px solid rgba(196,18,31,.2);padding-top:12px}
+ footer a{color:var(--faint);text-decoration:none}footer a:hover{color:var(--blood)}
 </style>
-<canvas id="planetsCanvas"></canvas>
-<canvas id="neuralCanvas"></canvas>
+<canvas id="sky"></canvas>
+<canvas id="net"></canvas>
 <div class="page"><div class="wrap">
-<header>
-  <a class="l24" href="/" aria-label="Lattice24"><svg class="l24mark" viewBox="0 0 1000 220" role="img" aria-label="Lattice24"><text x="0" y="150" font-family="Helvetica Neue, Inter, sans-serif" font-size="140" font-weight="900" letter-spacing="-6" fill="currentColor">LATTICE<tspan fill="#0F4C2F">24</tspan></text></svg></a>
-  <nav class="nav"><a href="/send-data.html">Send data</a> <a href="/audit.html">Audit</a> <a href="/carbon.html">Carbon</a></nav>
-</header>
-<div class="hero">
-  <div>
-    <p class="eyebrow">Blood red &bull; Dark green &bull; Space movie</p>
-    <h1><span class="blood">A DRIFTED</span><br><span class="blood">SENSOR</span> <span class="forest">DOESN'T</span><br><span class="forest">ALARM.</span></h1>
-    <p class="sub">It reports a plausible wrong number. We catch it from data you already log — no reference, no site visit. <strong style="color:var(--ink)">One file. One report. Notes on both sides.</strong></p>
-    <div class="cta-row">
-      <a class="btn" href="/send-data.html">→ Start free assessment</a>
-      <a class="btn btn--ghost" href="/send-data.html">Add notes →</a>
-      <span class="micro">no account &bull; no call &bull; first file free</span>
+  <div class="top">
+    <a class="brand" href="/" aria-label="Lattice24">
+      <span class="mark" aria-hidden="true"><span class="mark-grid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></span>
+      <span class="word">LATTICE<span>24</span><small>BLOOD RED • DARK GREEN • SPACE</small></span>
+    </a>
+    <nav class="nav"><a href="/send-data.html">Send data</a><a href="/audit.html">Audit</a><a href="/carbon.html">Carbon</a></nav>
+  </div>
+
+  <div class="hero">
+    <div>
+      <p class="kicker">Single page • Loud • No jargon</p>
+      <h1><span class="a">A DRIFTED</span><br><span class="a">SENSOR</span> <span class="b">DOESN'T</span><br><span class="b">ALARM.</span></h1>
+      <p class="sub">It reports a plausible wrong number. We catch it from data you already log — <strong>no reference, no visit.</strong> One file. One report. Notes quoted back.</p>
+      <div class="actions">
+        <a class="btn" href="/send-data.html">→ Start free assessment</a>
+        <a class="btn btn--ghost" href="/send-data.html">Add notes →</a>
+        <span class="micro">first file free • no call • no account</span>
+      </div>
+      <div class="mini">
+        <div><h3>Fails silent</h3><p><strong>Plausible ≠ true.</strong> Cal runs on a clock because no one knows which channel moved.</p></div>
+        <div><h3>Fails different</h3><p>Second estimator that <strong>fails differently</strong>. Disagreement is the signal.</p></div>
+        <div><h3>Stated</h3><p>What moved, what it costs, <strong>what it cannot support</strong> — on the report.</p></div>
+      </div>
     </div>
-    <div class="cards">
-      <div class="card"><h3>Why it fails</h3><p><strong>Plausible ≠ true.</strong> Calibration runs on a clock because nobody knows which channel moved.</p></div>
-      <div class="card"><h3>How we fix</h3><p>Second estimator that <strong>fails differently</strong>. Disagreement = error, without a reference.</p></div>
-      <div class="card"><h3>What you get</h3><p>What moved, what it costs, <strong>what it cannot support</strong> — stated on the report.</p></div>
+    <div class="panel">
+      <h3>Free assessment — 30 sec</h3>
+      <p>Drop a CSV you already log. Add context and we quote it back in the report.</p>
+      <input class="field" id="qn" placeholder="e.g. Channel 3 post-filter, batch 7 shutdown">
+      <a class="btn" href="/send-data.html" onclick="sessionStorage.setItem('l24_notes',document.getElementById('qn').value)">→ Continue with notes</a>
+      <p style="margin:8px 0 0;font-size:.82rem;color:var(--faint)">Or email: <a href="mailto:jim@lattice24.com" style="color:var(--blood)">jim@lattice24.com</a></p>
+      <div class="meta"><span><b>13,910</b> samples</span><span><b>36</b> mo</span><span><b>DOI</b> 10.5281/zenodo.18918783</span></div>
     </div>
   </div>
-  <div class="right">
-    <h3>Free assessment — 30 seconds</h3>
-    <p style="font-size:.92rem;color:var(--ink-soft);margin:0 0 8px">Drop a CSV you already log. Add anything that matters — we quote it back in the report.</p>
-    <input class="field" placeholder="e.g. Channel 3 post-filter, batch 7 shutdown" id="quickNotes">
-    <a class="btn" href="/send-data.html" onclick="sessionStorage.setItem('l24_notes',document.getElementById('quickNotes').value)">→ Continue with notes</a>
-    <p style="font-size:.78rem;color:var(--ink-faint);margin:8px 0 0">Or email direct: <a href="mailto:jim@lattice24.com" style="color:var(--blood)">jim@lattice24.com</a></p>
-    <div class="proof"><span><b>13,910</b> samples</span><span><b>36</b> months</span><span><b>DOI</b> 10.5281/zenodo.18918783</span></div>
-  </div>
-</div>
-<footer><span>LATTICE24 &bull; JAMES JARDINE &bull; ORCID 0009-0004-9073-7192</span><span><a href="https://doi.org/10.5281/zenodo.21738214">Concept DOI</a> &bull; <a href="https://doi.org/10.5281/zenodo.18918783">Engine DOI</a></span></footer>
+
+  <footer><span>LATTICE24 • JAMES JARDINE • ORCID 0009-0004-9073-7192</span><span><a href="https://doi.org/10.5281/zenodo.21738214">Concept</a> • <a href="https://doi.org/10.5281/zenodo.18918783">Engine</a></span></footer>
 </div></div>
 <script>
-const planetsCanvas=document.getElementById('planetsCanvas'),planetsCtx=planetsCanvas.getContext('2d');
-function resizePlanets(){planetsCanvas.width=innerWidth;planetsCanvas.height=innerHeight}addEventListener('resize',resizePlanets);resizePlanets();
-const planets=[{x:.18,y:.28,r:22,orbit:140,speed:.00018,base:'#5A0F0F',light:'#C4121F',atmo:'rgba(196,18,31,.35)'},{x:.72,y:.58,r:34,orbit:190,speed:.00011,base:'#0A2E1F',light:'#1B6B3A',atmo:'rgba(15,76,47,.45)',ring:true},{x:.52,y:.18,r:16,orbit:110,speed:.00028,base:'#1A0505',light:'#8B0A12',atmo:'rgba(120,12,18,.30)'},{x:.14,y:.72,r:26,orbit:165,speed:.00014,base:'#0F1A0F',light:'#2D5A3A',atmo:'rgba(45,90,58,.35)'}];
-let t=0;function drawBody(ctx,x,y,r,base,light,atmo){const g=ctx.createRadialGradient(x-r*.35,y-r*.4,r*.2,x,y,r);g.addColorStop(0,light);g.addColorStop(.45,base);g.addColorStop(1,'#010202');ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();const sh=ctx.createRadialGradient(x+r*.3,y+r*.25,r*.4,x,y,r);sh.addColorStop(0,'rgba(0,0,0,0)');sh.addColorStop(1,'rgba(0,0,0,.65)');ctx.fillStyle=sh;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();const ag=ctx.createRadialGradient(x,y,r*.92,x,y,r*1.55);ag.addColorStop(0,atmo);ag.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=ag;ctx.beginPath();ctx.arc(x,y,r*1.55,0,Math.PI*2);ctx.fill()}
-function drawPlanets(){planetsCtx.clearRect(0,0,planetsCanvas.width,planetsCanvas.height);planetsCtx.fillStyle='rgba(255,255,255,.018)';for(let i=0;i<80;i++){planetsCtx.fillRect((i*137.5)%planetsCanvas.width,(i*67)%planetsCanvas.height,1,1)}t++;for(const p of planets){const cx=planetsCanvas.width*p.x,cy=planetsCanvas.height*p.y,x=cx+Math.cos(t*p.speed)*p.orbit,y=cy+Math.sin(t*p.speed)*p.orbit;planetsCtx.strokeStyle='rgba(255,255,255,.04)';planetsCtx.beginPath();planetsCtx.arc(cx,cy,p.orbit,0,Math.PI*2);planetsCtx.stroke();if(p.ring){planetsCtx.strokeStyle='rgba(196,18,31,.18)';planetsCtx.lineWidth=2;planetsCtx.beginPath();planetsCtx.ellipse(x,y,p.r*1.9,p.r*.72,-.25,0,Math.PI*2);planetsCtx.stroke();planetsCtx.strokeStyle='rgba(15,76,47,.22)';planetsCtx.lineWidth=1;planetsCtx.beginPath();planetsCtx.ellipse(x,y,p.r*1.45,p.r*.52,-.25,0,Math.PI*2);planetsCtx.stroke()}drawBody(planetsCtx,x,y,p.r,p.base,p.light,p.atmo)}requestAnimationFrame(drawPlanets)}drawPlanets();
-const neuralCanvas=document.getElementById('neuralCanvas'),neuralCtx=neuralCanvas.getContext('2d');
-function resizeNeural(){neuralCanvas.width=innerWidth;neuralCanvas.height=innerHeight}addEventListener('resize',resizeNeural);resizeNeural();
-class Node{constructor(x,y){this.x=x;this.y=y;this.vx=(Math.random()-.5)*.5;this.vy=(Math.random()-.5)*.5;this.r=Math.random()*1.6+1;this.o=Math.random()*.5+.3;this.p=Math.random()*Math.PI*2}update(){this.x+=this.vx;this.y+=this.vy;this.p+=.02;if(this.x<0||this.x>neuralCanvas.width)this.vx*=-1;if(this.y<0||this.y>neuralCanvas.height)this.vy*=-1}draw(){const pul=Math.sin(this.p)*.3+.7;const isBlood=this.x%2<1;const col=isBlood?`rgba(196,18,31,${this.o*pul})`:`rgba(15,76,47,${this.o*pul})`;const glow=isBlood?'rgba(196,18,31,.55)':'rgba(15,76,47,.5)';neuralCtx.fillStyle=col;neuralCtx.shadowColor=glow;neuralCtx.shadowBlur=10;neuralCtx.beginPath();neuralCtx.arc(this.x,this.y,this.r,0,Math.PI*2);neuralCtx.fill();neuralCtx.shadowBlur=0}}
-const nodes=Array.from({length:22},()=>new Node(Math.random()*neuralCanvas.width,Math.random()*neuralCanvas.height));
+const sky=document.getElementById('sky'),sctx=sky.getContext('2d');
+function rSky(){sky.width=innerWidth;sky.height=innerHeight}addEventListener('resize',rSky);rSky();
+const planets=[{x:.2,y:.28,r:28,orbit:150,speed:.00016,base:'#4A0A0A',light:'#C4121F',atmo:'rgba(196,18,31,.32)'},{x:.74,y:.6,r:42,orbit:200,speed:.00009,base:'#0A1F14',light:'#0F4C2F',atmo:'rgba(15,76,47,.42)',ring:true},{x:.54,y:.16,r:18,orbit:115,speed:.00024,base:'#1A0505',light:'#7A0A12',atmo:'rgba(120,12,18,.28)'},{x:.16,y:.74,r:32,orbit:175,speed:.00012,base:'#0E1A0F',light:'#1E6B3A',atmo:'rgba(45,90,58,.32)'}];
+let t=0;function body(ctx,x,y,r,base,light,atmo){const g=ctx.createRadialGradient(x-r*.35,y-r*.42,r*.22,x,y,r);g.addColorStop(0,light);g.addColorStop(.5,base);g.addColorStop(1,'#010202');ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();const sh=ctx.createRadialGradient(x+r*.32,y+r*.28,r*.42,x,y,r);sh.addColorStop(0,'rgba(0,0,0,0)');sh.addColorStop(1,'rgba(0,0,0,.68)');ctx.fillStyle=sh;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();const ag=ctx.createRadialGradient(x,y,r*.9,x,y,r*1.6);ag.addColorStop(0,atmo);ag.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=ag;ctx.beginPath();ctx.arc(x,y,r*1.6,0,Math.PI*2);ctx.fill()}
+function drawSky(){sctx.clearRect(0,0,sky.width,sky.height);sctx.fillStyle='rgba(255,255,255,.015)';for(let i=0;i<90;i++)sctx.fillRect((i*137.5)%sky.width,(i*67)%sky.height,1,1);t++;for(const p of planets){const cx=sky.width*p.x,cy=sky.height*p.y,x=cx+Math.cos(t*p.speed)*p.orbit,y=cy+Math.sin(t*p.speed)*p.orbit;sctx.strokeStyle='rgba(255,255,255,.035)';sctx.beginPath();sctx.arc(cx,cy,p.orbit,0,Math.PI*2);sctx.stroke();if(p.ring){sctx.strokeStyle='rgba(196,18,31,.16)';sctx.lineWidth=2;sctx.beginPath();sctx.ellipse(x,y,p.r*1.9,p.r*.70,-.28,0,Math.PI*2);sctx.stroke();sctx.strokeStyle='rgba(15,76,47,.20)';sctx.lineWidth=1;sctx.beginPath();sctx.ellipse(x,y,p.r*1.45,p.r*.50,-.28,0,Math.PI*2);sctx.stroke()}body(sctx,x,y,p.r,p.base,p.light,p.atmo)}requestAnimationFrame(drawSky)}drawSky();
+const net=document.getElementById('net'),nctx=net.getContext('2d');
+function rNet(){net.width=innerWidth;net.height=innerHeight}addEventListener('resize',rNet);rNet();
+class N{constructor(x,y){this.x=x;this.y=y;this.vx=(Math.random()-.5)*.45;this.vy=(Math.random()-.5)*.45;this.r=Math.random()*1.7+1;this.o=Math.random()*.5+.3;this.p=Math.random()*Math.PI*2}update(){this.x+=this.vx;this.y+=this.vy;this.p+=.02;if(this.x<0||this.x>net.width)this.vx*=-1;if(this.y<0||this.y>net.height)this.vy*=-1}draw(){const pul=Math.sin(this.p)*.3+.7;const blood=this.x%2<1;const col=blood?`rgba(196,18,31,${this.o*pul})`:`rgba(15,76,47,${this.o*pul})`;const glow=blood?'rgba(196,18,31,.5)':'rgba(15,76,47,.45)';nctx.fillStyle=col;nctx.shadowColor=glow;nctx.shadowBlur=10;nctx.beginPath();nctx.arc(this.x,this.y,this.r,0,Math.PI*2);nctx.fill();nctx.shadowBlur=0}}
+const nodes=Array.from({length:20},()=>new N(Math.random()*net.width,Math.random()*net.height));
 let mx=innerWidth/2,my=innerHeight/2;addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY});
-function drawNet(){neuralCtx.clearRect(0,0,neuralCanvas.width,neuralCanvas.height);for(const n of nodes){n.update();n.draw()}for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){const dx=nodes[i].x-nodes[j].x,dy=nodes[i].y-nodes[j].y,d=Math.hypot(dx,dy);if(d<150){const op=(1-d/150)*.22;neuralCtx.strokeStyle=(i+j)%2==0?`rgba(196,18,31,${op})`:`rgba(15,76,47,${op})`;neuralCtx.beginPath();neuralCtx.moveTo(nodes[i].x,nodes[i].y);neuralCtx.lineTo(nodes[j].x,nodes[j].y);neuralCtx.stroke()}}for(const n of nodes){const d=Math.hypot(n.x-mx,n.y-my);if(d<200){neuralCtx.strokeStyle=`rgba(196,18,31,${(1-d/200)*.32})`;neuralCtx.beginPath();neuralCtx.moveTo(n.x,n.y);neuralCtx.lineTo(mx,my);neuralCtx.stroke()}}requestAnimationFrame(drawNet)}drawNet();
+function drawNet(){nctx.clearRect(0,0,net.width,net.height);for(const n of nodes){n.update();n.draw()}for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){const dx=nodes[i].x-nodes[j].x,dy=nodes[i].y-nodes[j].y,d=Math.hypot(dx,dy);if(d<150){const op=(1-d/150)*.20;nctx.strokeStyle=(i+j)%2==0?`rgba(196,18,31,${op})`:`rgba(15,76,47,${op})`;nctx.beginPath();nctx.moveTo(nodes[i].x,nodes[i].y);nctx.lineTo(nodes[j].x,nodes[j].y);nctx.stroke()}}for(const n of nodes){const d=Math.hypot(n.x-mx,n.y-my);if(d<200){nctx.strokeStyle=`rgba(196,18,31,${(1-d/200)*.28})`;nctx.beginPath();nctx.moveTo(n.x,n.y);nctx.lineTo(mx,my);nctx.stroke()}}requestAnimationFrame(drawNet)}drawNet();
 </script>
