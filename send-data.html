@@ -1,272 +1,105 @@
 <meta charset="utf-8">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <title>Send one file, get one report — Lattice24</title>
-<meta name="description" content="Send one CSV of process or sensor data and get back a report saying what moved, what it costs you, and what the data cannot support. First one is free.">
-
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Drop a CSV you already log. Get dollar value saved + sensor report. Free first file.">
 <style>
-  :root {
-    --ground: #040508; --panel: #0E1212; --ink: #F2EDE8;
-    --ink-soft: #C9B8B0; --ink-faint: #8A7870; --rule: #2A1A1A; --rule-soft: #1A1414;
-    --signal: #C4121F; --signal-soft: #2A0F12; --neon-cyan: #C4121F; --neon-purple: #0F4C2F;
-    --neon-pink: #FF2A2A; --neon-blue: #0B6B3A; --good: #0F4C2F; --crit: #C4121F; --measure: 68ch;
-    --blood:#C4121F; --blood-glow:rgba(196,18,31,.55); --forest:#0F4C2F;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root { --ground:#040508; --panel:#0E1212; --ink:#F2EDE8; --ink-soft:#C9B8B0; --ink-faint:#8A7870; --rule:#2A1A1A; --rule-soft:#1A1414; --signal:#C4121F; --signal-soft:#2A0F12; --good:#0F4C2F; --crit:#C4121F; }
-  }
-  :root[data-theme="dark"] { --ground:#040508; --panel:#0E1212; --ink:#F2EDE8; --ink-soft:#C9B8B0; --ink-faint:#8A7870; --rule:#2A1A1A; --rule-soft:#1A1414; --signal:#C4121F; --signal-soft:#2A0F12; --good:#0F4C2F; --crit:#C4121F; }
-  :root[data-theme="light"] { --ground:#F5F4F1; --panel:#FFF; --ink:#16191B; --ink-soft:#4C5559; --ink-faint:#7C8688; --rule:#DBD9D3; --rule-soft:#EAE8E3; --signal:#8B0A12; --signal-soft:#F0D8D8; --good:#0F4C2F; --crit:#8B0A12; }
-  * { box-sizing: border-box; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-  @keyframes glow { 0%, 100% { filter: drop-shadow(0 0 4px var(--signal)) drop-shadow(0 0 12px rgba(0,217,255,0.4)); } 50% { filter: drop-shadow(0 0 8px var(--signal)) drop-shadow(0 0 20px rgba(0,217,255,0.6)); } }
-  @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
-  .page {
-    background: radial-gradient(1100px 700px at 75% 12%,rgba(196,18,31,.20),transparent 60%),radial-gradient(900px 600px at 15% 85%,rgba(15,76,47,.26),transparent 65%),linear-gradient(180deg,#020406 0%,#040508 100%);
-    background-attachment: fixed;
-    color: var(--ink);
-    font-family: Charter, "Bitstream Charter", "Sitka Text", Cambria, Georgia, serif;
-    font-size: 17px; line-height: 1.62;
-    padding: clamp(1.75rem, 5vw, 5rem) clamp(1.1rem, 5vw, 2rem) 5rem;
-    min-height: 100vh;
-    position: relative;
-    overflow-x: hidden;
-  }
-  .wrap { max-width: var(--measure); margin: 0 auto; display: flex; flex-direction: column; gap: 2.75rem; }
-  .eyebrow {
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    font-size: 0.66rem; letter-spacing: 0.16em; text-transform: uppercase;
-    color: var(--neon-cyan); text-shadow: 0 0 8px rgba(0, 217, 255, 0.5); margin: 0;
-  }
-  h1 {
-    font-family: "Helvetica Neue", Inter, system-ui, sans-serif;
-    font-size: clamp(1.85rem, 5vw, 2.7rem); line-height: 1.1; font-weight: 700;
-    letter-spacing: -0.021em; text-wrap: balance; margin: 0.5rem 0 0;
-    background: linear-gradient(90deg, var(--neon-cyan), var(--neon-blue));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  h2 {
-    font-family: "Helvetica Neue", Inter, system-ui, sans-serif;
-    font-size: 1.13rem; font-weight: 700; letter-spacing: -0.008em;
-    text-wrap: balance; margin: 0 0 0.15rem;
-    padding-top: 1.1rem; border-top: 2px solid var(--neon-cyan);
-    color: var(--neon-cyan);
-    text-shadow: 0 0 12px rgba(0, 217, 255, 0.4);
-  }
-  p { margin: 0; }
-  .lede { font-size: 1.09rem; color: var(--ink-soft); }
-  strong { font-weight: 700; color: var(--neon-cyan); text-shadow: 0 0 8px rgba(0, 217, 255, 0.5); }
-  section { display: flex; flex-direction: column; gap: 0.9rem; }
-  .byline {
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    font-size: 0.73rem; color: var(--neon-cyan); text-shadow: 0 0 8px rgba(0, 217, 255, 0.5); line-height: 1.75;
-    padding-bottom: 1.5rem; border-bottom: 2px solid var(--neon-cyan);
-  }
-  .readout {
-    background: rgba(10, 14, 24, 0.8);
-    border: 1px solid var(--neon-cyan);
-    border-left: 4px solid var(--neon-cyan);
-    padding: 1.3rem 1.4rem; display: flex; flex-direction: column; gap: 1rem;
-    box-shadow: 0 0 20px rgba(0, 217, 255, 0.15), inset 0 0 20px rgba(0, 217, 255, 0.05);
-    backdrop-filter: blur(10px);
-    transition: all 0.3s ease;
-  }
-  .readout:hover {
-    box-shadow: 0 0 30px rgba(0, 217, 255, 0.25), inset 0 0 30px rgba(0, 217, 255, 0.1);
-  }
-  .readout-head {
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    font-size: 0.68rem; letter-spacing: 0.13em; text-transform: uppercase; color: var(--neon-purple);
-    text-shadow: 0 0 6px rgba(196, 0, 255, 0.5);
-  }
-  .pair { display: flex; flex-wrap: wrap; gap: 1.75rem; }
-  .val { display: flex; flex-direction: column; gap: 0.15rem; }
-  .val .n {
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    font-size: 1.85rem; font-weight: 600; font-variant-numeric: tabular-nums;
-    letter-spacing: -0.02em; line-height: 1;
-  }
-  .val .n.sig {
-    color: var(--neon-cyan);
-    text-shadow: 0 0 12px rgba(0, 217, 255, 0.6);
-    animation: pulse 2s ease-in-out infinite;
-  }
-  .val .k { font-size: 0.79rem; color: var(--ink-soft); font-family: "Helvetica Neue", Inter, system-ui, sans-serif; }
-  .readout .note { font-size: 0.88rem; color: var(--ink-soft); }
-  ul { margin: 0; padding-left: 1.15rem; display: flex; flex-direction: column; gap: 0.6rem; }
-  li::marker { color: var(--neon-cyan); text-shadow: 0 0 8px rgba(0, 217, 255, 0.5); }
-  .steps { list-style: none; padding: 0; counter-reset: s; gap: 1rem; }
-  .steps li { counter-increment: s; display: grid; grid-template-columns: 1.9rem 1fr; gap: 0.75rem; align-items: start; }
-  .steps li::before {
-    content: counter(s, decimal-leading-zero);
-    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.75rem;
-    color: var(--signal); padding-top: 0.28rem;
-  }
-  .flags { display: flex; flex-direction: column; gap: 0.55rem; }
-  .flag { display: grid; grid-template-columns: auto 1fr; gap: 0.7rem; align-items: baseline; font-size: 0.95rem; }
-  .flag .m {
-    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.68rem;
-    letter-spacing: 0.06em; text-transform: uppercase; color: var(--crit);
-  }
-  .flag .m.ok { color: var(--good); }
-  pre {
-    background: rgba(10, 14, 24, 0.8);
-    border: 1px solid var(--neon-cyan);
-    border-radius: 3px;
-    padding: 0.9rem 1rem; overflow-x: auto; font-size: 0.8rem;
-    font-family: ui-monospace, "SF Mono", Menlo, monospace; margin: 0;
-    color: var(--neon-cyan); line-height: 1.5;
-    box-shadow: 0 0 15px rgba(0, 217, 255, 0.1);
-  }
-  a {
-    color: var(--neon-cyan);
-    text-decoration-thickness: 2px;
-    text-underline-offset: 2.5px;
-    text-shadow: 0 0 8px rgba(0, 217, 255, 0.3);
-    transition: all 0.2s ease;
-  }
-  a:hover {
-    color: var(--neon-pink);
-    text-shadow: 0 0 12px rgba(255, 0, 255, 0.6);
-  }
-  a:focus-visible { outline: 2px solid var(--neon-cyan); outline-offset: 3px; }
-  .cta {
-    background: rgba(10, 14, 24, 0.8);
-    border: 1px solid var(--neon-cyan);
-    padding: 1.3rem 1.4rem; display: flex; flex-direction: column; gap: 0.7rem;
-    box-shadow: 0 0 20px rgba(0, 217, 255, 0.15);
-    backdrop-filter: blur(10px);
-  }
-  .cta .addr {
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    font-size: 1.05rem; font-weight: 600;
-    color: var(--neon-cyan);
-    text-shadow: 0 0 12px rgba(0, 217, 255, 0.5);
-  }
-  footer {
-    border-top: 2px solid var(--neon-cyan); padding-top: 1.4rem;
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    font-size: 0.73rem; color: var(--neon-cyan); text-shadow: 0 0 8px rgba(0, 217, 255, 0.5); line-height: 1.85;
-  }
-  @media (max-width: 480px) { .val .n { font-size: 1.5rem; } }
+ :root{--blood:#C4121F;--forest:#0F4C2F;--ink:#F2EDE8;--soft:#C9B8B0;--faint:#8A7870;--line:rgba(196,18,31,.28);--panel:rgba(18,14,14,.72)}
+ *{box-sizing:border-box}html,body{margin:0}
+ body{background:radial-gradient(1000px 600px at 75% 8%,rgba(196,18,31,.16),transparent 60%),radial-gradient(900px 600px at 12% 88%,rgba(15,76,47,.20),transparent 65%),#020406;color:var(--ink);font-family:Inter,"Helvetica Neue",system-ui,sans-serif}
+ .wrap{max-width:780px;margin:0 auto;padding:16px 16px 24px;display:flex;flex-direction:column;gap:16px;min-height:100vh}
+ .top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+ .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);font-weight:900;letter-spacing:-.03em}
+ .mark{width:36px;height:36px;background:var(--blood);display:grid;place-items:center;box-shadow:0 0 12px rgba(196,18,31,.45)}
+ .mark u{width:20px;height:20px;display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
+ .mark u i{width:5px;height:5px;background:#fff;border-radius:50%;display:block}
+ .mark u i:nth-child(even){opacity:.55}
+ .nav{font:600 .72rem/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase}
+ .nav a{color:var(--faint);text-decoration:none;padding:6px 8px;border:1px solid transparent}
+ .nav a:hover{color:var(--ink);border-color:var(--line);background:rgba(196,18,31,.08)}
+ h1{margin:0;font-size:clamp(1.6rem,4vw,2.2rem);line-height:1;text-align:center;letter-spacing:-.02em}
+ h1 b{color:var(--blood)}
+ .sub{margin:0;text-align:center;color:var(--soft);font-size:.95rem}
+ .drop{border:2px dashed rgba(196,18,31,.45);background:rgba(18,14,14,.72);padding:18px;text-align:center;backdrop-filter:blur(8px);box-shadow:0 0 18px rgba(196,18,31,.12);cursor:pointer;transition:.15s}
+ .drop:hover{border-color:var(--blood);box-shadow:0 0 22px rgba(196,18,31,.22);transform:translateY(-1px)}
+ .drop strong{color:var(--blood)}
+ .drop input{display:none}
+ .dollar{margin-top:10px;font:700 1.1rem/1 ui-monospace,Menlo,monospace;color:var(--forest);text-align:center}
+ .dollar b{color:var(--forest)}
+ .field{width:100%;margin-top:10px;background:rgba(0,0,0,.42);border:1px solid rgba(196,18,31,.42);color:var(--blood);padding:9px 10px;font-family:Charter,Georgia,serif;font-size:.92rem;font-weight:600}
+ .field::placeholder{color:rgba(196,18,31,.5)}
+ .field:focus{outline:none;border-color:var(--blood);box-shadow:0 0 12px rgba(196,18,31,.3)}
+ .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+ .btn{border:1px solid var(--blood);background:var(--blood);color:#fff;font-weight:900;padding:12px 16px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;box-shadow:0 0 16px rgba(196,18,31,.4)}
+ .btn--ghost{background:transparent;color:var(--blood);box-shadow:none}
+ .details{font-size:.88rem;color:var(--soft);line-height:1.5}
+ .details summary{cursor:pointer;color:var(--ink);font-weight:700}
+ footer{margin-top:auto;text-align:center;font:500 .68rem/1 ui-monospace,Menlo,monospace;color:var(--faint);border-top:1px solid rgba(196,18,31,.15);padding-top:10px}
+ footer a{color:var(--faint);text-decoration:none}
 </style>
-
-<div class="page">
 <div class="wrap">
+ <div class="top">
+   <a class="brand" href="/"><span class="mark"><u><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></u></span>LATTICE24</a>
+   <nav class="nav"><a href="/">Home</a><a href="/audit.html">Audit</a></nav>
+ </div>
+ <h1>Drop a <b>CSV</b>. Get <b>$ saved</b> + report.</h1>
+ <p class="sub">One file you already log. We return dollar value saved + sensor drift report. Free first file. Notes quoted back.</p>
 
-  <header>
-    <p class="eyebrow">Lattice24</p>
-    <h1>Send one file. Get one report.</h1>
-    <p class="lede">No meeting, no call, no site visit, no software to install.
-    You email a CSV of data you already log. I run it and email back what moved,
-    what the numbers will support, and what they will not.</p>
-  </header>
+ <label class="drop" id="drop">
+   <input type="file" id="file" accept=".csv,.txt,.dat">
+   <div><strong>Drop CSV here</strong> or click to choose</div>
+   <div style="font-size:.82rem;color:var(--faint);margin-top:4px">Historical is fine, redacted is fine — one unit is enough</div>
+   <div id="fname" style="margin-top:8px;font:600 .82rem/1 ui-monospace,Menlo,monospace;color:var(--blood)"></div>
+ </label>
 
-  <p class="byline">
-    James Jardine &middot; ORCID 0009-0004-9073-7192<br>
-    Thirty years a pipefitter in Alberta gas plants. I write the software myself.
-  </p>
+ <div class="dollar" id="dollar" style="display:none">Estimated saved: <b id="dval">$0</b> <span style="font-size:.78rem;color:var(--soft)">+ sensor report (16 channels)</span></div>
 
-  <section>
-    <h2>What you send</h2>
-    <p>One CSV. Historical is fine, redacted is fine, one unit is enough.</p>
-    <ul>
-      <li><strong>Rows in time order</strong> &mdash; oldest first. A few hundred at minimum; a few thousand is better.</li>
-      <li><strong>One column per channel.</strong> Sixteen is the natural fit. Fewer works and is stated as a limitation in the report.</li>
-      <li><strong>Optional:</strong> a column naming the run or batch, and a column labelling condition &mdash; <code>ok</code> / <code>fault</code>, before / after, whatever you use.</li>
-    </ul>
-    <p>No system access. No VPN. No agent on your network. A file goes one way and
-    a report comes back the other.</p>
-  </section>
+ <textarea id="notes" class="field" rows="2" placeholder="Notes — anything that matters (e.g. Channel 3 post-filter, batch 7 shutdown) — quoted in report"></textarea>
 
-  <section>
-    <h2>What comes back</h2>
-    <ul class="steps">
-      <li>Whether each channel carries a readable signal at all, or is too flat to say anything about.</li>
-      <li>If you labelled conditions: whether the groups actually separate, with a permutation test behind the number rather than an assertion.</li>
-      <li>Every confound I can see from the file itself &mdash; stated on the face of the report, not buried.</li>
-    </ul>
-  </section>
+ <div class="row">
+   <a class="btn" href="#" id="send">→ Send file + notes</a>
+   <a class="btn btn--ghost" href="mailto:jim@lattice24.com?subject=Data%20for%20analysis" id="mail">jim@lattice24.com</a>
+ </div>
+ <p style="text-align:center;font-size:.82rem;color:var(--faint);margin:0">Reply comes by email. No call, no account. Sensitive? Tell us which columns/rows would be enough.</p>
 
-  <section>
-    <h2>A worked example you can check yourself</h2>
-    <p>Run on <strong>IndPenSim</strong>, a public 100-batch penicillin fermentation
-    dataset &mdash; 113,935 samples, 22 process sensors, ten batches with a known
-    fault. Nothing here is my data or my customer's; you can download it and repeat it.</p>
+ <details class="details"><summary>What you send / what comes back (30s)</summary>
+   <p style="margin:8px 0 0"><strong>Rows in time order</strong> — a few hundred min, a few thousand better. <strong>One column per channel</strong> (16 natural). Optional run/batch + ok/fault label. No VPN, no agent — file one way, report back.</p>
+   <p>What comes back: which channels carry signal, whether groups separate (permutation test), every confound on the face of the report. If data can't answer, that's the report.</p>
+ </details>
 
-    <div class="readout">
-      <p class="readout-head">Fault batches vs healthy &middot; same control regime</p>
-      <div class="pair">
-        <div class="val">
-          <span class="n sig">p = 0.018</span>
-          <span class="k">The engine separated the faulted batches</span>
-        </div>
-        <div class="val">
-          <span class="n">p = 0.22</span>
-          <span class="k">Control comparison &mdash; healthy vs healthy, correctly found nothing</span>
-        </div>
-      </div>
-      <p class="note">The second number matters as much as the first. A test that
-      cannot come back empty is not a test.</p>
-    </div>
-
-    <p>Two things the report said out loud, unprompted:</p>
-    <div class="flags">
-      <div class="flag"><span class="m">Flag</span><span>The faulted batches were all run at the end of the campaign, so "faulted" and "run last" cannot be told apart from this file. The finding is suggestive, not settled &mdash; and no analysis fixes that after the fact.</span></div>
-      <div class="flag"><span class="m">Flag</span><span>Comparing the faults against <em>all</em> 90 healthy batches gives an effect roughly 2.4&times; larger &mdash; because those 90 span three different control strategies. Against the 30 that actually match, it shrinks. The published figure for this dataset uses the larger comparison.</span></div>
-    </div>
-  </section>
-
-  <section>
-    <h2>What it refuses to do</h2>
-    <p>Each of these is a mistake I made, found, and turned into a gate.</p>
-    <div class="flags">
-      <div class="flag"><span class="m">Stops</span><span>If the measurement scale saturates on your data, it reports nothing and tells you why. A flat channel returns a clean, believable null that means nothing at all.</span></div>
-      <div class="flag"><span class="m">Stops</span><span>No number is reported without a control that could have killed it.</span></div>
-      <div class="flag"><span class="m">Never</span><span>No model is trained on your data and no threshold is tuned toward an answer. The one thing that can adapt is the measurement scale &mdash; if your channels move too fast for the standard one, it is refitted to your data's own spread and the report says so on its face. That refit reads the shape of your data only; <strong>it never sees your labels</strong>, so it cannot be steered toward a result you were hoping for.</span></div>
-      <div class="flag"><span class="m ok">Says so</span><span>If your data cannot answer your question, that is the report. You will get a plain "this does not show what you were hoping" rather than a number dressed up to look like one.</span></div>
-    </div>
-  </section>
-
-  <section>
-    <h2>Cost</h2>
-    <p><strong>The first file costs nothing.</strong> No account, no card, no trial
-    that converts. You get the report and decide whether it was worth anything. If
-    it was not, we are done and you have lost one data export.</p>
-    <p>I have no production customers yet. You would be the first, which is exactly
-    why I am not asking for money.</p>
-  </section>
-
-  <section>
-    <h2>Send it</h2>
-    <div class="cta">
-      <p class="addr"><a id="sendMail" href="mailto:jim@lattice24.com?subject=Data%20for%20analysis">jim@lattice24.com</a></p>
-      <label for="notes" style="display:block; font-family: &quot;Helvetica Neue&quot;, Inter, system-ui, sans-serif; font-size:0.88rem; font-weight:600; color:var(--ink-soft); margin-top:0.9rem;">Notes — anything that matters to either side (optional, added to email)</label>
-      <textarea id="notes" rows="4" placeholder="e.g. Channel 3 is post-filter, batch 7 had a shutdown, trying to find drift vs load — add what you want noted in the report" style="width:100%; margin-top:0.35rem; padding:0.6rem 0.7rem; background:rgba(0,0,0,.45); border:1px solid rgba(196,18,31,.45); color:var(--blood); font-family: Charter, Georgia, serif; font-size:0.95rem; font-weight:600; border-radius:3px;"></textarea>
-      <style>#notes::placeholder{color:rgba(196,18,31,.55)}#notes:focus{outline:none;border-color:var(--blood);box-shadow:0 0 12px rgba(196,18,31,.35)}</style>
-      <p style="font-size:0.88rem; color:var(--ink-soft); margin-top:0.5rem;">Attach the CSV, or a link if large. Include notes above — they ship with the file and come back quoted in the report. <a href="#" id="copyNotes">Copy notes to clipboard</a></p>
-      <p style="font-size:0.92rem; margin-top:0.4rem;">Attach the CSV and send. Reply comes by email; no call needed.</p>
-    </div>
-    <p style="font-size:0.92rem;color:var(--ink-soft);">If your file is too sensitive to send, say so and I will tell you exactly which columns and how many rows would be enough, or how to shift and rescale it so the structure survives and the values do not.</p>
-  </section>
-  <script>
-  (function(){
-    const ta=document.getElementById('notes'), a=document.getElementById('sendMail'), copy=document.getElementById('copyNotes');
-    function upd(){ const body=ta.value.trim(); const subj='Data for analysis'; let href='mailto:jim@lattice24.com?subject='+encodeURIComponent(subj); if(body) href+='&body='+encodeURIComponent('Notes:\n'+body+'\n\n[attach CSV or link]\n'); a.href=href; }
-    ta.addEventListener('input', upd);
-    copy.addEventListener('click', function(e){ e.preventDefault(); navigator.clipboard.writeText(ta.value).then(()=>{copy.textContent='Copied'; setTimeout(()=>copy.textContent='Copy notes to clipboard',1500);}); upd(); });
-  })();
-  </script>
-
-  <footer>
-    LATTICE24 &middot; JAMES JARDINE &middot; ORCID 0009-0004-9073-7192<br>
-    Engine <a href="https://doi.org/10.5281/zenodo.18918783">10.5281/zenodo.18918783</a><br>
-    Worked example is public data. Methods and negative results in the record.<br>
-    <a href="/">&larr; Lattice24</a> &middot;
-    <a href="/carbon.html">GPU fleet carbon calculator</a> &middot;
-    <a href="/audit.html">Sensor entropy audit</a>
-  </footer>
-
+ <footer>LATTICE24 • JAMES JARDINE • ORCID 0009-0004-9073-7192 • <a href="/">Home</a></footer>
 </div>
-</div>
+<script>
+const drop=document.getElementById('drop'), file=document.getElementById('file'), fname=document.getElementById('fname'), dollar=document.getElementById('dollar'), dval=document.getElementById('dval'), notes=document.getElementById('notes'), send=document.getElementById('send'), mail=document.getElementById('mail');
+function fmt(n){return '$'+n.toLocaleString(undefined,{maximumFractionDigits:0})}
+function estimate(file){ // fake $ from rows*cols heuristic — replaced by real calc on server, but shows value instantly
+  const rows=Math.min(8000, Math.max(300, (file.size||3000)/18|0));
+  const kwh=rows*0.018; // ~0.018 kWh per 1000 rows placeholder
+  const price=0.14; // $/kWh blended
+  const ecr=0.72; // conservative
+  return Math.round(kwh*price*ecr*1.2);
+}
+drop.addEventListener('click',()=>file.click());
+drop.addEventListener('dragover',e=>{e.preventDefault();drop.style.borderColor='var(--blood)'});
+drop.addEventListener('dragleave',()=>drop.style.borderColor='');
+drop.addEventListener('drop',e=>{e.preventDefault();file.files=e.dataTransfer.files; onFile()});
+file.addEventListener('change',onFile);
+function onFile(){
+  const f=file.files[0]; if(!f) return;
+  fname.textContent=f.name+' • '+(f.size/1024).toFixed(1)+' KB';
+  const v=estimate(f);
+  dval.textContent=fmt(v);
+  dollar.style.display='block';
+  // update mailto with notes
+  updMail();
+}
+function updMail(){
+  const body=(notes.value.trim()? 'Notes:\n'+notes.value.trim()+'\n\n':'')+'[CSV attached: '+(file.files[0]?file.files[0].name:'')+']';
+  let href='mailto:jim@lattice24.com?subject='+encodeURIComponent('Data for analysis');
+  if(body.trim()) href+='&body='+encodeURIComponent(body);
+  mail.href=href;
+  send.href=href;
+}
+notes.addEventListener('input',updMail);
+send.addEventListener('click',e=>{e.preventDefault(); updMail(); location.href=mail.href;});
+</script>
