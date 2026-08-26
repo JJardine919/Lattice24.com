@@ -7,10 +7,10 @@
 <style>
   :root{--blood:#C4121F;--blood2:#7A0A12;--forest:#0F4C2F;--ink:#F2EDE8;--soft:#C9B8B0;--faint:#8A7870}
   *{box-sizing:border-box}html,body{margin:0;height:100%}
-  body{background:#020406;color:var(--ink);font-family:Inter,"Helvetica Neue",system-ui,sans-serif;overflow:hidden}
+  body{background:radial-gradient(1200px 700px at 70% 10%,rgba(196,18,31,.22),transparent 60%),radial-gradient(900px 600px at 15% 85%,rgba(15,76,47,.28),transparent 65%),#020406;color:var(--ink);font-family:Inter,"Helvetica Neue",system-ui,sans-serif;overflow:hidden}
   canvas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
   #sky{z-index:0}
-  #net{z-index:1;opacity:.32}
+  #net{z-index:1;opacity:.42}
   .wrap{position:relative;z-index:2;min-height:100vh;display:flex;flex-direction:column;padding:18px 20px;max-width:1200px;margin:0 auto}
   .top{display:flex;align-items:center;justify-content:space-between}
   .brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--ink)}
@@ -70,9 +70,14 @@
 <script>
 const sky=document.getElementById('sky'),sctx=sky.getContext('2d');
 function rs(){sky.width=innerWidth;sky.height=innerHeight}addEventListener('resize',rs);rs();
-const planets=[{x:.22,y:.26,r:30,orbit:160,speed:.00015,base:'#4A0A0A',light:'#C4121F',atmo:'rgba(196,18,31,.30)'},{x:.76,y:.62,r:48,orbit:210,speed:.00009,base:'#0A1F14',light:'#0F4C2F',atmo:'rgba(15,76,47,.40)',ring:true},{x:.58,y:.14,r:20,orbit:120,speed:.00022,base:'#1A0505',light:'#7A0A12',atmo:'rgba(120,12,18,.28)'},{x:.14,y:.76,r:36,orbit:185,speed:.00011,base:'#0E1A0F',light:'#1E6B3A',atmo:'rgba(45,90,58,.30)'}];
+const planets=[{x:.22,y:.26,r:32,orbit:160,speed:.00015,base:'#5A0F0F',light:'#FF1A2A',atmo:'rgba(196,18,31,.48)'},{x:.76,y:.62,r:52,orbit:210,speed:.00009,base:'#0A2F1F',light:'#14A85A',atmo:'rgba(15,76,47,.58)',ring:true},{x:.58,y:.14,r:22,orbit:120,speed:.00022,base:'#2A0505',light:'#C4121F',atmo:'rgba(196,18,31,.42)'},{x:.14,y:.76,r:38,orbit:185,speed:.00011,base:'#0E2A18',light:'#1E8A4A',atmo:'rgba(45,90,58,.45)'}];
 let t=0;function blob(ctx,x,y,r,base,light,atmo){const g=ctx.createRadialGradient(x-r*.32,y-r*.38,r*.24,x,y,r);g.addColorStop(0,light);g.addColorStop(.5,base);g.addColorStop(1,'#010202');ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();const sh=ctx.createRadialGradient(x+r*.3,y+r*.26,r*.4,x,y,r);sh.addColorStop(0,'rgba(0,0,0,0)');sh.addColorStop(1,'rgba(0,0,0,.66)');ctx.fillStyle=sh;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();const ag=ctx.createRadialGradient(x,y,r*.92,x,y,r*1.6);ag.addColorStop(0,atmo);ag.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=ag;ctx.beginPath();ctx.arc(x,y,r*1.6,0,Math.PI*2);ctx.fill()}
-function draw(){sctx.clearRect(0,0,sky.width,sky.height);sctx.fillStyle='rgba(255,255,255,.015)';for(let i=0;i<100;i++)sctx.fillRect((i*137.5)%sky.width,(i*67)%sky.height,1,1);t++;for(const p of planets){const cx=sky.width*p.x,cy=sky.height*p.y,x=cx+Math.cos(t*p.speed)*p.orbit,y=cy+Math.sin(t*p.speed)*p.orbit;sctx.strokeStyle='rgba(255,255,255,.03)';sctx.beginPath();sctx.arc(cx,cy,p.orbit,0,Math.PI*2);sctx.stroke();if(p.ring){sctx.strokeStyle='rgba(196,18,31,.14)';sctx.lineWidth=2;sctx.beginPath();sctx.ellipse(x,y,p.r*1.9,p.r*.68,-.28,0,Math.PI*2);sctx.stroke();sctx.strokeStyle='rgba(15,76,47,.18)';sctx.lineWidth=1;sctx.beginPath();sctx.ellipse(x,y,p.r*1.45,p.r*.48,-.28,0,Math.PI*2);sctx.stroke()}blob(sctx,x,y,p.r,p.base,p.light,p.atmo)}requestAnimationFrame(draw)}draw();
+function draw(){sctx.clearRect(0,0,sky.width,sky.height);
+// vivid starfield + faint nebula
+sctx.fillStyle='rgba(255,255,255,.028)';for(let i=0;i<140;i++){const a=(i*97)%255/255*.6+.4;sctx.fillStyle=`rgba(255,255,255,${a*.028})`;sctx.fillRect((i*137.5)%sky.width,(i*67)%sky.height,1.2,1.2)}
+// nebula glow
+const ng=sctx.createRadialGradient(sky.width*.72,sky.height*.18,0,sky.width*.72,sky.height*.18,sky.width*.45);ng.addColorStop(0,'rgba(196,18,31,.14)');ng.addColorStop(.5,'rgba(15,76,47,.08)');ng.addColorStop(1,'rgba(0,0,0,0)');sctx.fillStyle=ng;sctx.fillRect(0,0,sky.width,sky.height);
+t++;for(const p of planets){const cx=sky.width*p.x,cy=sky.height*p.y,x=cx+Math.cos(t*p.speed)*p.orbit,y=cy+Math.sin(t*p.speed)*p.orbit;sctx.strokeStyle='rgba(255,255,255,.04)';sctx.beginPath();sctx.arc(cx,cy,p.orbit,0,Math.PI*2);sctx.stroke();if(p.ring){sctx.strokeStyle='rgba(196,18,31,.22)';sctx.lineWidth=2.2;sctx.beginPath();sctx.ellipse(x,y,p.r*1.9,p.r*.68,-.28,0,Math.PI*2);sctx.stroke();sctx.strokeStyle='rgba(15,76,47,.26)';sctx.lineWidth=1.2;sctx.beginPath();sctx.ellipse(x,y,p.r*1.45,p.r*.48,-.28,0,Math.PI*2);sctx.stroke()}blob(sctx,x,y,p.r,p.base,p.light,p.atmo)}requestAnimationFrame(draw)}draw();
 const net=document.getElementById('net'),nctx=net.getContext('2d');
 function rn(){net.width=innerWidth;net.height=innerHeight}addEventListener('resize',rn);rn();
 class N{constructor(x,y){this.x=x;this.y=y;this.vx=(Math.random()-.5)*.4;this.vy=(Math.random()-.5)*.4;this.r=Math.random()*1.6+1;this.o=Math.random()*.5+.3;this.p=Math.random()*6}update(){this.x+=this.vx;this.y+=this.vy;this.p+=.02;if(this.x<0||this.x>net.width)this.vx*=-1;if(this.y<0||this.y>net.height)this.vy*=-1}draw(){const pul=Math.sin(this.p)*.3+.7;const blood=this.x%2<1;const c=blood?`rgba(196,18,31,${this.o*pul})`:`rgba(15,76,47,${this.o*pul})`;const g=blood?'rgba(196,18,31,.5)':'rgba(15,76,47,.45)';nctx.fillStyle=c;nctx.shadowColor=g;nctx.shadowBlur=10;nctx.beginPath();nctx.arc(this.x,this.y,this.r,0,Math.PI*2);nctx.fill();nctx.shadowBlur=0}}

@@ -5,46 +5,23 @@
 
 <style>
   :root {
-    --ground: #000510;
-    --panel: #0A0E18;
-    --ink: #E8F4FF;
-    --ink-soft: #A8C5E0;
-    --ink-faint: #6B7E96;
-    --rule: #1A2540;
-    --rule-soft: #0F1620;
-    --signal: #00D9FF;
-    --signal-soft: #003D47;
-    --neon-cyan: #00D9FF;
-    --neon-purple: #C400FF;
-    --neon-pink: #FF00FF;
-    --neon-blue: #0099FF;
-    --good: #00FF88;
-    --crit: #FF3366;
-    --measure: 68ch;
+    --ground: #040508; --panel: #0E1212; --ink: #F2EDE8;
+    --ink-soft: #C9B8B0; --ink-faint: #8A7870; --rule: #2A1A1A; --rule-soft: #1A1414;
+    --signal: #C4121F; --signal-soft: #2A0F12; --neon-cyan: #C4121F; --neon-purple: #0F4C2F;
+    --neon-pink: #FF2A2A; --neon-blue: #0B6B3A; --good: #0F4C2F; --crit: #C4121F; --measure: 68ch;
+    --blood:#C4121F; --blood-glow:rgba(196,18,31,.55); --forest:#0F4C2F;
   }
   @media (prefers-color-scheme: dark) {
-    :root {
-      --ground: #000510; --panel: #0A0E18; --ink: #E8F4FF; --ink-soft: #A8C5E0;
-      --ink-faint: #6B7E96; --rule: #1A2540; --rule-soft: #0F1620;
-      --signal: #00D9FF; --signal-soft: #003D47; --good: #00FF88; --crit: #FF3366;
-    }
+    :root { --ground:#040508; --panel:#0E1212; --ink:#F2EDE8; --ink-soft:#C9B8B0; --ink-faint:#8A7870; --rule:#2A1A1A; --rule-soft:#1A1414; --signal:#C4121F; --signal-soft:#2A0F12; --good:#0F4C2F; --crit:#C4121F; }
   }
-  :root[data-theme="dark"] {
-    --ground: #000510; --panel: #0A0E18; --ink: #E8F4FF; --ink-soft: #A8C5E0;
-    --ink-faint: #6B7E96; --rule: #1A2540; --rule-soft: #0F1620;
-    --signal: #00D9FF; --signal-soft: #003D47; --good: #00FF88; --crit: #FF3366;
-  }
-  :root[data-theme="light"] {
-    --ground: #F5F4F1; --panel: #FFFFFF; --ink: #16191B; --ink-soft: #4C5559;
-    --ink-faint: #7C8688; --rule: #DBD9D3; --rule-soft: #EAE8E3;
-    --signal: #A9601A; --signal-soft: #F0E2CE; --good: #3F6B52; --crit: #A33C33;
-  }
+  :root[data-theme="dark"] { --ground:#040508; --panel:#0E1212; --ink:#F2EDE8; --ink-soft:#C9B8B0; --ink-faint:#8A7870; --rule:#2A1A1A; --rule-soft:#1A1414; --signal:#C4121F; --signal-soft:#2A0F12; --good:#0F4C2F; --crit:#C4121F; }
+  :root[data-theme="light"] { --ground:#F5F4F1; --panel:#FFF; --ink:#16191B; --ink-soft:#4C5559; --ink-faint:#7C8688; --rule:#DBD9D3; --rule-soft:#EAE8E3; --signal:#8B0A12; --signal-soft:#F0D8D8; --good:#0F4C2F; --crit:#8B0A12; }
   * { box-sizing: border-box; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes glow { 0%, 100% { filter: drop-shadow(0 0 4px var(--signal)) drop-shadow(0 0 12px rgba(0,217,255,0.4)); } 50% { filter: drop-shadow(0 0 8px var(--signal)) drop-shadow(0 0 20px rgba(0,217,255,0.6)); } }
   @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
   .page {
-    background: linear-gradient(135deg, #000510 0%, #050115 50%, #001030 100%);
+    background: radial-gradient(1100px 700px at 75% 12%,rgba(196,18,31,.20),transparent 60%),radial-gradient(900px 600px at 15% 85%,rgba(15,76,47,.26),transparent 65%),linear-gradient(180deg,#020406 0%,#040508 100%);
     background-attachment: fixed;
     color: var(--ink);
     font-family: Charter, "Bitstream Charter", "Sitka Text", Cambria, Georgia, serif;
@@ -266,7 +243,8 @@
     <div class="cta">
       <p class="addr"><a id="sendMail" href="mailto:jim@lattice24.com?subject=Data%20for%20analysis">jim@lattice24.com</a></p>
       <label for="notes" style="display:block; font-family: &quot;Helvetica Neue&quot;, Inter, system-ui, sans-serif; font-size:0.88rem; font-weight:600; color:var(--ink-soft); margin-top:0.9rem;">Notes — anything that matters to either side (optional, added to email)</label>
-      <textarea id="notes" rows="4" placeholder="e.g. Channel 3 is post-filter, batch 7 had a shutdown, trying to find drift vs load — add what you want noted in the report" style="width:100%; margin-top:0.35rem; padding:0.6rem 0.7rem; background:rgba(10,14,24,0.6); border:1px solid var(--rule); color:var(--ink); font-family: Charter, Georgia, serif; font-size:0.92rem; border-radius:3px;"></textarea>
+      <textarea id="notes" rows="4" placeholder="e.g. Channel 3 is post-filter, batch 7 had a shutdown, trying to find drift vs load — add what you want noted in the report" style="width:100%; margin-top:0.35rem; padding:0.6rem 0.7rem; background:rgba(0,0,0,.45); border:1px solid rgba(196,18,31,.45); color:var(--blood); font-family: Charter, Georgia, serif; font-size:0.95rem; font-weight:600; border-radius:3px;"></textarea>
+      <style>#notes::placeholder{color:rgba(196,18,31,.55)}#notes:focus{outline:none;border-color:var(--blood);box-shadow:0 0 12px rgba(196,18,31,.35)}</style>
       <p style="font-size:0.88rem; color:var(--ink-soft); margin-top:0.5rem;">Attach the CSV, or a link if large. Include notes above — they ship with the file and come back quoted in the report. <a href="#" id="copyNotes">Copy notes to clipboard</a></p>
       <p style="font-size:0.92rem; margin-top:0.4rem;">Attach the CSV and send. Reply comes by email; no call needed.</p>
     </div>
