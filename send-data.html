@@ -264,17 +264,22 @@
   <section>
     <h2>Send it</h2>
     <div class="cta">
-      <p class="addr"><a href="mailto:jim@lattice24.com?subject=Data%20for%20analysis">jim@lattice24.com</a></p>
-      <p style="font-size:0.92rem;">Attach the CSV, or a link to it if it is large.
-      One line about what the channels are and what you are trying to find out is
-      enough &mdash; I will ask if I need more. Reply comes by email; I do not need
-      a call and will not ask you for one.</p>
+      <p class="addr"><a id="sendMail" href="mailto:jim@lattice24.com?subject=Data%20for%20analysis">jim@lattice24.com</a></p>
+      <label for="notes" style="display:block; font-family: &quot;Helvetica Neue&quot;, Inter, system-ui, sans-serif; font-size:0.88rem; font-weight:600; color:var(--ink-soft); margin-top:0.9rem;">Notes — anything that matters to either side (optional, added to email)</label>
+      <textarea id="notes" rows="4" placeholder="e.g. Channel 3 is post-filter, batch 7 had a shutdown, trying to find drift vs load — add what you want noted in the report" style="width:100%; margin-top:0.35rem; padding:0.6rem 0.7rem; background:rgba(10,14,24,0.6); border:1px solid var(--rule); color:var(--ink); font-family: Charter, Georgia, serif; font-size:0.92rem; border-radius:3px;"></textarea>
+      <p style="font-size:0.88rem; color:var(--ink-soft); margin-top:0.5rem;">Attach the CSV, or a link if large. Include notes above — they ship with the file and come back quoted in the report. <a href="#" id="copyNotes">Copy notes to clipboard</a></p>
+      <p style="font-size:0.92rem; margin-top:0.4rem;">Attach the CSV and send. Reply comes by email; no call needed.</p>
     </div>
-    <p style="font-size:0.92rem;color:var(--ink-soft);">If your file is too
-    sensitive to send, say so and I will tell you exactly which columns and how
-    many rows would be enough, or how to shift and rescale it so the structure
-    survives and the values do not.</p>
+    <p style="font-size:0.92rem;color:var(--ink-soft);">If your file is too sensitive to send, say so and I will tell you exactly which columns and how many rows would be enough, or how to shift and rescale it so the structure survives and the values do not.</p>
   </section>
+  <script>
+  (function(){
+    const ta=document.getElementById('notes'), a=document.getElementById('sendMail'), copy=document.getElementById('copyNotes');
+    function upd(){ const body=ta.value.trim(); const subj='Data for analysis'; let href='mailto:jim@lattice24.com?subject='+encodeURIComponent(subj); if(body) href+='&body='+encodeURIComponent('Notes:\n'+body+'\n\n[attach CSV or link]\n'); a.href=href; }
+    ta.addEventListener('input', upd);
+    copy.addEventListener('click', function(e){ e.preventDefault(); navigator.clipboard.writeText(ta.value).then(()=>{copy.textContent='Copied'; setTimeout(()=>copy.textContent='Copy notes to clipboard',1500);}); upd(); });
+  })();
+  </script>
 
   <footer>
     LATTICE24 &middot; JAMES JARDINE &middot; ORCID 0009-0004-9073-7192<br>
