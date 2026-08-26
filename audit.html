@@ -7,29 +7,26 @@
 <title>Free Sensor Entropy Audit — runs in your browser</title>
 <meta name="description" content="Drop a CSV of sensor history. Get an entropy profile of every channel and which ones moved most across the period. Runs entirely in your browser — nothing is uploaded.">
 <style>
-  :root{--ink:#E8F4FF;--ink2:#A8C5E0;--paper:#000510;--card:#0A0E18;--green:#00D9FF;--neon-cyan:#00D9FF;--neon-purple:#C400FF;--neon-pink:#FF00FF;--neon-blue:#0099FF;
-        --green-dk:#00B8D4;--amber:#FF3366;--red:#FF3366;--line:#1A2540;--steel:#6B7E96;
-        --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-  @media (prefers-color-scheme:dark){:root{--ink:#E8F4FF;--ink2:#A8C5E0;--paper:#000510;
-        --card:#0A0E18;--green:#00D9FF;--green-dk:#00B8D4;--amber:#FF3366;--red:#FF3366;
-        --line:#1A2540;--steel:#6B7E96}}
+  :root{--ink:#F2EDE8;--ink2:#C9B8B0;--paper:#020406;--card:#0E1212;--green:#C4121F;--neon-cyan:#C4121F;--neon-purple:#0F4C2F;--neon-pink:#FF2A2A;--neon-blue:#0B6B3A;
+        --green-dk:#7A0A12;--amber:#C4121F;--red:#C4121F;--line:#2A1A1A;--steel:#8A7870;
+        --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;--blood:#C4121F;--forest:#0F4C2F}
   *{margin:0;padding:0;box-sizing:border-box}
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-       background:linear-gradient(135deg, #000510 0%, #050115 50%, #001030 100%);background-attachment:fixed;color:var(--ink);line-height:1.6;font-size:17px}
+       background:radial-gradient(1000px 600px at 75% 8%,rgba(196,18,31,.16),transparent 60%),radial-gradient(900px 600px at 12% 88%,rgba(15,76,47,.20),transparent 65%),#020406;background-attachment:fixed;color:var(--ink);line-height:1.6;font-size:17px}
   .wrap{max-width:960px;margin:0 auto;padding:0 22px}
   header{border-bottom:1px solid var(--line);padding:16px 0}
   .logo{font-weight:800;font-size:1.2rem;letter-spacing:.04em;text-decoration:none;color:var(--ink)}
   .logo span{color:var(--green)}
   .hero{padding:48px 0 24px}
-  .kicker{font-family:var(--mono);font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--green);margin-bottom:12px;text-shadow:0 0 8px rgba(0, 217, 255, 0.5)}
+  .kicker{font-family:var(--mono);font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--blood);margin-bottom:12px;text-shadow:0 0 8px rgba(196,18,31,.5)}
   h1{font-size:clamp(1.8rem,4.4vw,2.6rem);line-height:1.15;letter-spacing:-.02em;margin-bottom:14px}
   .lede{color:var(--ink2);max-width:46rem}
   .panel{background:rgba(10, 14, 24, 0.8);border:1px solid var(--neon-cyan);border-radius:10px;padding:24px;margin:24px 0;box-shadow:0 0 20px rgba(0, 217, 255, 0.15), inset 0 0 20px rgba(0, 217, 255, 0.05);backdrop-filter:blur(10px);transition:all 0.3s ease}
   .panel:hover{box-shadow:0 0 30px rgba(0, 217, 255, 0.25), inset 0 0 30px rgba(0, 217, 255, 0.1)}
   .panel h2{font-size:1.05rem;margin-bottom:14px}
-  #drop{border:2px dashed var(--neon-cyan);border-radius:12px;padding:52px 20px;text-align:center;
-        cursor:pointer;transition:.15s;background:rgba(0, 217, 255, 0.05);box-shadow:0 0 15px rgba(0, 217, 255, 0.1)}
-  #drop:hover,#drop.over{border-color:var(--neon-cyan);background:rgba(0, 217, 255, 0.15);box-shadow:0 0 25px rgba(0, 217, 255, 0.25)}
+  #drop{border:2px dashed rgba(196,18,31,.45);border-radius:12px;padding:52px 20px;text-align:center;
+        cursor:pointer;transition:.15s;background:rgba(18,14,14,.72);box-shadow:0 0 15px rgba(196,18,31,.12)}
+  #drop:hover,#drop.over{border-color:var(--blood);background:rgba(196,18,31,.12);box-shadow:0 0 25px rgba(196,18,31,.22)}
   #drop .big{font-size:1.1rem;font-weight:600}
   #drop .sm{font-size:.88rem;color:var(--steel);margin-top:6px}
   .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin:18px 0}
@@ -56,8 +53,10 @@
   footer{border-top:1px solid var(--line);margin-top:40px;padding:22px 0 44px;color:var(--steel);font-size:.86rem}
   a{color:var(--green)}
   label{display:block;font-size:.82rem;color:var(--steel);margin-bottom:4px}
-  input[type=text],input[type=number]{width:100%;padding:9px 11px;border:1px solid var(--line);
-     border-radius:6px;background:var(--paper);color:var(--ink);font-size:1rem}
+  input[type=text],input[type=number],textarea,select{width:100%;padding:9px 11px;border:1px solid rgba(196,18,31,.42);
+     border-radius:6px;background:rgba(0,0,0,.42);color:var(--blood);font-size:1rem;font-weight:600}
+  input[type=text]::placeholder,input[type=number]::placeholder,textarea::placeholder{color:rgba(196,18,31,.5)}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--blood);box-shadow:0 0 12px rgba(196,18,31,.3)}
   .ig{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
   .hidden{display:none}
   @media print{header,#drop,.note,#intake,footer .noprint{display:none}}
