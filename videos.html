@@ -96,7 +96,9 @@ Separately, the recipe's rolling window steps by one sample, so consecutive wind
 
 Correction, 2026-08-23: this paragraph previously said the effective sample size was "about 46" and the inflation "roughly sixfold". Neither figure had a result file behind it, and on recomputation neither reproduces — 46 matches no estimator, and the real inflation is larger than sixfold, not smaller. The caveat understated the problem. It is now measured and persisted: qbh/gas_overlap_inflation.json.
 
-What survives, stated plainly, and stated as a property of this statistic rather than of the data: on entropy moments over rolling 20-sample windows, inside batch 7 alone the separation is real and large — 36.42 sigma observed, and none of 1000 shuffles came near it. On that same statistic, inside batch 10 alone there is nothing — 5.94 observed against a shuffled mean of 6.85, p = 0.72. Two batches, opposite answers. That is a genuine per-batch result, and it is not "six gases separate."
+What survives, stated plainly, and stated as a property of this statistic rather than of the data: on entropy moments over rolling 20-sample windows, inside batch 7 alone the separation is real and large — not one of 1,000 shuffles that hold the batch fixed comes near what the real gas labels give. On that same statistic, inside batch 10 alone there is nothing: the real labels do worse than the average shuffle (p = 0.72). Two batches, opposite answers. That is a genuine per-batch result, and it is not "six gases separate."
+
+We state that as a rank, not as a sigma, and the reason is measurable. The windows step by one sample, so consecutive windows share 19 of their 20 samples; the lag-1 autocorrelation of the window series runs from 0.986 to 0.995 across the six gases. Depending on which standard correction you use, every sigma in this family is inflated by somewhere between 4.5 and 19 times, batch 7's included. A rank against a shuffle of those same windows does not have that problem, because the real value and the shuffled ones are computed the same way. So we quote the rank. (Measured, and on disk: gas_window_overlap.json.)
 
 The contrast between those two batches belongs to the recipe, not to the samples. Measured 2026-08-23: a different window-level test on the same data — non-overlapping 24-row windows instead of rolling 20-sample ones — finds a gas effect inside batch 10 that is larger than the one inside batch 7, at the floor of its own permutation null. That restores nothing withdrawn above, we are not building on it, and it is recorded here for one reason: a withdrawal notice that overstates its own contrast is the same defect one level down. "Nothing in batch 10" was our result on one recipe. It is not a property of batch 10. Result file: qbh/gas_window_signal_present.json.
 
@@ -142,7 +144,7 @@ Control: qbh/green2_gas_within_batch_null.json. Nothing replaces it yet; we will
   <p style="margin:26px 0"><a class="btn" href="/">Back to the site</a></p>
   <p class="src"><a href="/audit.html">Free sensor entropy audit</a> · <a href="/send-data.html">Send one CSV, get one report</a></p>
 
-  <footer><p>Lattice24 · Sylvan Lake, Alberta · <a href="mailto:jim@lattice24.com">jim@lattice24.com</a></p></footer>
+  <footer><p>Lattice24 · Sylvan Lake, Alberta · <a href="mailto:jjj101147@gmail.com">jjj101147@gmail.com</a></p></footer>
 </div>
 </body>
 </html>

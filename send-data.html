@@ -58,7 +58,7 @@
 
  <div class="row">
    <a class="btn" href="#" id="send">→ Send file + notes</a>
-   <a class="btn btn--ghost" href="mailto:jim@lattice24.com?subject=Data%20for%20analysis" id="mail">jim@lattice24.com</a>
+   <a class="btn btn--ghost" href="mailto:jjj101147@gmail.com?subject=Data%20for%20analysis" id="mail">jjj101147@gmail.com</a>
  </div>
  <p style="text-align:center;font-size:.82rem;color:var(--faint);margin:0">Reply comes by email. No call, no account. Sensitive? Tell us which columns/rows would be enough.</p>
 
@@ -95,7 +95,7 @@ function onFile(){
 }
 function updMail(){
   const body=(notes.value.trim()? 'Notes:\n'+notes.value.trim()+'\n\n':'')+'[CSV attached: '+(file.files[0]?file.files[0].name:'')+']';
-  let href='mailto:jim@lattice24.com?subject='+encodeURIComponent('Data for analysis');
+  let href='mailto:jjj101147@gmail.com?subject='+encodeURIComponent('Data for analysis');
   if(body.trim()) href+='&body='+encodeURIComponent(body);
   mail.href=href;
   send.href=href;
