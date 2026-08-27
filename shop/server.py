@@ -398,8 +398,31 @@ class Handler(BaseHTTPRequestHandler):
                     f"<p>Reply to <a href=\"mailto:{notify.REPLY_ADDRESS}\">"
                     f"{notify.REPLY_ADDRESS}</a> and it reaches Jim directly.</p>"))
             if not m["ok"]:
+                err = m.get("err", "") or ""
+                # An engine TIMEOUT is not a data problem, and the row-ordering
+                # line below is the wrong answer to it. The 2026-08-26 triage
+                # fix covered the REVIEW and CANNOT branches, but a timeout has
+                # branch INSTANT -- the gate PASSED the file -- and ok=False, so
+                # it fell straight through to a message telling the customer to
+                # re-sort rows that are already in order. He would have sorted a
+                # correct file and sent it back to time out again.
+                if "timeout" in err.lower():
+                    limit = m.get("triage", {}).get("n_rows") or "your file's"
+                    return self._send(200, _page_html("This one is on us", (
+                        f"<pre>{html_escape(err)}</pre>"
+                        "<p><b>Your file is fine.</b> It passed every data check — the "
+                        "ordering, the time column and the channel scales were all "
+                        "read successfully. What failed is our side: the run did not "
+                        "finish inside the time limit our hosting allows.</p>"
+                        f"<p>There is nothing to fix in the file you sent. Send fewer "
+                        f"rows — <b>consecutive</b> rows, not a random sample, because "
+                        f"the engine reads sequence — and the same file will run. "
+                        f"Yours had {limit} rows.</p>"
+                        f"<p>Or reply to <a href=\"mailto:{notify.REPLY_ADDRESS}\">"
+                        f"{notify.REPLY_ADDRESS}</a> and Jim will run the whole record "
+                        "himself and send you the report.</p>")))
                 return self._send(200, _page_html("Could not read it",
-                    f"<pre>{html_escape(m.get('err',''))}</pre><p>Check row ordering: the engine "
+                    f"<pre>{html_escape(err)}</pre><p>Check row ordering: the engine "
                     "reads sequence, rows must be time-ordered.</p>"))
             if not notify.REPORT_TRUSTWORTHY:
                 # notify.REPORT_TRUSTWORTHY gated the OUTGOING mail only, while

@@ -27,7 +27,16 @@ services:
       # Binary-search it against the live 180 s limit after deploy and set it
       # here. Until then the customer-facing page states no ceiling.
       - key: SHOP_MAX_ROWS
-        value: "2500"
+        value: "600"
+
+      # TEMPORARY, 2026-08-26. Raised from its default of 6 so the row ceiling
+      # can be binary-searched against this host inside one session -- four runs
+      # exhausted the window last time and a 429 is not a data point. PUT BACK
+      # to 6 (or removed, which is the same thing) in the same session, before
+      # the measurement report is written. If you are reading this line on a
+      # later date, it was left open by mistake: remove it.
+      - key: SHOP_RUN_PER_IP_HOUR
+        value: "40"
 
       # Throttles on the unauthenticated upload endpoint.
       - key: SHOP_RATE_PER_IP_HOUR

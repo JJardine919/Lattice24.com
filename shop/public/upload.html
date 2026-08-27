@@ -78,12 +78,12 @@
     and to nobody else.
   </p>
   <p style="font-size:.9rem;color:var(--ink-soft);">
-    <strong>Size that actually works here:</strong> at least 200 rows (below that the engine refuses,
-    and says so), and on this hosted instance up to roughly <strong>2,500 rows across 16 channels</strong>.
-    Measured 2026-08-26: 2,000&nbsp;&times;&nbsp;16 completes; 4,000&nbsp;&times;&nbsp;16 and a
-    17,518-row file both hit the 180-second engine limit and come back as an error. If your record is
-    longer, send a slice &mdash; the engine reads sequence, so send <em>consecutive</em> rows, not a
-    random sample.
+    <strong>Size that actually works here:</strong> at least 200 rows (below that the engine
+    refuses, and says so). The upper limit on this hosted instance is being re-measured against
+    the live server today &mdash; the number that was here before was derived by scaling a
+    laptop timing, not measured, and it was wrong. Until the measured figure is in, send
+    <strong>200 to 600 rows</strong> and it will run. If your record is longer, send a slice
+    &mdash; the engine reads sequence, so send <em>consecutive</em> rows, not a random sample.
   </p>
   <p style="font-family:sans-serif;font-size:.9rem;">Trading or quant team? Use the <a href="/shop/compute.html">compute version</a> instead.</p>
   <p style="font-size:.9rem;color:var(--ink-soft);">
@@ -106,10 +106,10 @@ document.getElementById('go').onclick = async () => {
   // Say it here, before a three-minute wait ends in a refusal. The server
   // enforces the same ceiling (SHOP_MAX_ROWS) -- this only saves the upload.
   const rows = csv.split(/\r?\n/).filter(l => l.trim()).length - 1;
-  if (rows > 2500) {
+  if (rows > 600) {
     msg.textContent = 'That file has ' + rows.toLocaleString() + ' rows. This hosted '
-      + 'instance finishes about 2,500 before it hits its 180-second limit. Send a '
-      + 'slice of at most 2,500 consecutive rows — the engine reads sequence, so a '
+      + 'instance is being re-measured today. Send a '
+      + 'slice of at most 600 consecutive rows — the engine reads sequence, so a '
       + 'random sample is not the same file.';
     return;
   }

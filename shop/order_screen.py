@@ -73,6 +73,8 @@ anything beyond a trend.
 import sys
 from pathlib import Path
 
+import math
+
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
@@ -139,6 +141,82 @@ def _lag1(w):
     return float(np.dot(x[:-1], x[1:]) / den) if den > 1e-15 else 0.0
 
 
+# ---------------------------------------------------------------------------
+# Batched forms of the two per-window statistics.
+#
+# SPEED ONLY. Nothing statistical changes here: the same NSHUF surrogates are
+# drawn from the same rng in the same order, the same two statistics are
+# computed on them, and the same z is taken. What changes is that the pool is
+# evaluated as one array instead of 500 Python calls.
+#
+# Why it was worth doing (profiled on 1,200 rows x 16 channels, laptop):
+# screen_channel was 91% of analyze.py's whole runtime, and inside it
+# perm_entropy ran 104,208 times -- 16 channels x 13 windows x (1 + 500
+# surrogates) -- each call looping in Python over 22 three-element argsorts and
+# then counting patterns with list.count() once per distinct pattern, which is
+# quadratic in the window. The permutation count is a CONTROL and is untouched:
+# it is still 500, and cutting it was never on the table.
+# ---------------------------------------------------------------------------
+
+def _pe_batch(W, order=3):
+    """Permutation entropy for every row of W at once. Same value as
+    surrogates.perm_entropy(row, order), to within one float ULP."""
+    W = np.atleast_2d(np.asarray(W, float))
+    k, n = W.shape
+    m = n - (order - 1)
+    if m < 1:
+        return np.full(k, np.nan)
+    idx = np.arange(m)[:, None] + np.arange(order)[None, :]
+    # (k, m, order) -> stable argsort per triple, exactly as the scalar form did
+    pat = np.argsort(W[:, idx], axis=2, kind="stable")
+    key = np.zeros((k, m), dtype=np.int64)
+    for j in range(order):
+        key = key * order + pat[:, :, j]
+    nkey = order ** order
+    # one bincount per row, offset so a single bincount covers the batch
+    flat = (np.arange(k)[:, None] * nkey + key).ravel()
+    counts = np.bincount(flat, minlength=k * nkey).reshape(k, nkey).astype(float)
+    tot = counts.sum(axis=1, keepdims=True)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        pr = counts / tot
+        term = np.where(pr > 0, pr * np.log(pr), 0.0)
+    h = -term.sum(axis=1)
+    return h / _LOG_FACT[order]
+
+
+_LOG_FACT = {o: math.log(math.factorial(o)) for o in (2, 3, 4, 5, 6)}
+
+
+def _n_distinct_batch(W, order=3):
+    """Distinct ordinal patterns per row -- the input to pe_is_degenerate."""
+    W = np.atleast_2d(np.asarray(W, float))
+    k, n = W.shape
+    m = n - (order - 1)
+    if m < 1:
+        return np.zeros(k, dtype=int)
+    idx = np.arange(m)[:, None] + np.arange(order)[None, :]
+    pat = np.argsort(W[:, idx], axis=2, kind="stable")
+    key = np.zeros((k, m), dtype=np.int64)
+    for j in range(order):
+        key = key * order + pat[:, :, j]
+    nkey = order ** order
+    flat = (np.arange(k)[:, None] * nkey + key).ravel()
+    counts = np.bincount(flat, minlength=k * nkey).reshape(k, nkey)
+    return (counts > 0).sum(axis=1)
+
+
+def _lag1_batch(W):
+    """_lag1 for every row of W at once."""
+    W = np.atleast_2d(np.asarray(W, float))
+    X = W - W.mean(axis=1, keepdims=True)
+    den = np.einsum("ij,ij->i", X, X)
+    num = np.einsum("ij,ij->i", X[:, :-1], X[:, 1:])
+    out = np.zeros(W.shape[0])
+    ok = den > 1e-15
+    out[ok] = num[ok] / den[ok]
+    return out
+
+
 def window_starts(n, k=LOCAL_WINDOWS):
     """k evenly spaced starts for windows of PTS consecutive rows."""
     if n < PTS:
@@ -177,22 +255,26 @@ def screen_channel(x, rng, k=None):
         if not np.all(np.isfinite(w)) or float(np.std(w)) < 1e-12:
             unusable += 1
             continue
-        perms = [rng.permutation(w) for _ in range(NSHUF)]
+        # The rng is drawn in exactly the same order and the same number of
+        # times as before -- NSHUF plain permutations here, NSHUF trend-matched
+        # surrogates below -- so the pools are the same pools. Only the way the
+        # statistic is evaluated over them changed (see _pe_batch).
+        perms = np.array([rng.permutation(w) for _ in range(NSHUF)])
         # lag-1 is computed for EVERY usable window, including the monotone ones
         # the ordinal arm refuses, because a trend is exactly what it measures
         # and hiding it would be its own kind of dishonesty. It is scored against
         # the PLAIN shuffle pool on purpose -- it is the trend column, so the
         # trend must not be in its null.
-        zl = _z(_lag1(w), [_lag1(p) for p in perms])
+        zl = _z(_lag1(w), _lag1_batch(perms))
         if zl is not None and abs(zl) >= WIN_Z:
             trend += 1
-        if pe_is_degenerate(w, 3):
+        if int(_n_distinct_batch(w[None, :], 3)[0]) <= 1:
             degenerate += 1
             continue
         # The headline arm is scored against the TREND-MATCHED pool, never the
         # plain shuffle. Against the shuffle it was a drift detector.
-        pool = _trend_pool(w, rng, NSHUF)
-        z = _z(perm_entropy(w, 3), [perm_entropy(p, 3) for p in pool])
+        pool = np.array(_trend_pool(w, rng, NSHUF))
+        z = _z(float(_pe_batch(w[None, :], 3)[0]), _pe_batch(pool, 3))
         if z is None:
             unusable += 1
             continue
