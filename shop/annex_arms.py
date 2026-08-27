@@ -107,7 +107,17 @@ def annex(path):
         zs, pe_f, l1_f, ran = [], 0, 0, 0
         for st in idx:
             w = x[max(0, st - PTS):st]
-            if len(w) < PTS or np.std(w) == 0:
+            # FINITENESS FIRST. `np.std` of a window holding a NaN is NaN, and
+            # `NaN == 0` is False, so a NaN window sailed past the old guard and
+            # `screen_window` raised `ValueError: non-finite value in the
+            # window` -- an unhandled exception inside the request thread, which
+            # closed the connection with no response at all. The customer got
+            # RemoteDisconnected, not an error page. Reproduced 2026-08-26 on
+            # voodoo_baselines/hive100/wetland_methane/hbl_arf.csv, a real
+            # 1,953-row methane-flux record whose gaps are literal `NaN`. Blank
+            # and NaN cells are ordinary in field data; this is not an exotic
+            # input.
+            if len(w) < PTS or not np.all(np.isfinite(w)) or np.std(w) == 0:
                 continue
             r = screen_window(list(map(float, w)),
                               rng=np.random.default_rng(int(st)),

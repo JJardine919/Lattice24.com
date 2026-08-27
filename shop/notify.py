@@ -171,6 +171,19 @@ def raise_alarm(job, what, detail):
 # ---------------------------------------------------------------- smtp
 
 def _credentials():
+    """Credentials, environment first.
+
+    This used to go straight to /home/voodoo/lattice24_pipeline and import
+    mailbox from it. That path does not exist inside the Render container, so
+    every send from the deployed server raised ImportError -- and because the
+    caller swallowed it, mail silently went nowhere. Read the environment
+    first, exactly as mailbox.load_credentials() does, so the container works
+    with LATTICE24_GMAIL_USER + LATTICE24_GMAIL_APP_PASSWORD set as env vars
+    and the laptop keeps working unchanged.
+    """
+    pw = os.environ.get("LATTICE24_GMAIL_APP_PASSWORD")
+    if pw:
+        return (os.environ.get("LATTICE24_GMAIL_USER", ""), pw)
     import sys
     sys.path.insert(0, "/home/voodoo/lattice24_pipeline")
     import mailbox as mailbox_mod
@@ -497,3 +510,96 @@ def accept_alert(job, meta, client_ip="unknown"):
             raise_alarm(job, "savings-split acknowledgement could not be queued",
                         f"{exc}\n{traceback.format_exc()}")
     return ok_jim
+
+
+# ------------------------------------------------------- collect-only intake
+#
+# Added 2026-08-26. The hosted free instance cannot run the engine inside
+# Render's 180 s request limit -- a 600-row file measured 181 s and returned
+# "engine timeout after 180s". Rather than advertise a row ceiling nobody has
+# measured, the site can simply COLLECT the file and say so honestly.
+#
+# The file must LEAVE the container immediately. Render's free tier wipes the
+# filesystem on redeploy and on every spin-down, so a job left on disk is gone
+# before anyone reads it. Mailing it out is the storage.
+
+def mail_upload_to_jim(job, csv_text, meta=None):
+    """Send one customer upload to Jim as an attachment. Returns True if sent.
+
+    Raises nothing: the caller must still answer the customer even if mail
+    fails, and a silent failure here is exactly the defect this replaces --
+    so it prints loudly and returns False instead.
+    """
+    meta = meta or {}
+
+    # A per-day ceiling on this path too. It sends direct SMTP and never
+    # touches mail_gate, so the gate's SELF_SEND_CAP cannot see it.
+    #
+    # On 2026-08-26 a soak run pushed 381 files through this server and each
+    # one mailed an alert. 549 messages left the account that day and Gmail
+    # refused everything past 500, which then blocked real customer uploads.
+    # A test loop must not be able to spend the account's daily quota again.
+    cap = int(os.environ.get("SHOP_COLLECT_DAILY_CAP", "100"))
+    stamp = time.strftime("%Y-%m-%d")
+    counter = Path(os.environ.get("SHOP_COLLECT_COUNTER",
+                                  "/tmp/lattice24_collect_count"))
+    n = 0
+    try:
+        day, got = counter.read_text().split(None, 1)
+        if day == stamp:
+            n = int(got)
+    except Exception:  # noqa: BLE001 - no counter yet is n=0
+        pass
+    if n >= cap:
+        print(f"COLLECT: daily cap of {cap} reached — upload {job} NOT mailed. "
+              f"Raise SHOP_COLLECT_DAILY_CAP or clear {counter}.", flush=True)
+        return False
+
+    try:
+        user, password = _credentials()
+    except Exception as exc:                     # noqa: BLE001
+        print(f"COLLECT: no credentials, upload {job} NOT mailed: {exc}",
+              flush=True)
+        return False
+
+    rows = max(0, len([ln for ln in csv_text.splitlines() if ln.strip()]) - 1)
+    first = (csv_text.splitlines() or [""])[0][:400]
+    who = meta.get("email") or "(no address given)"
+    note = (meta.get("notes") or "").strip()
+
+    body = (
+        f"Upload {job}\n"
+        f"{rows:,} rows\n"
+        f"from: {who}\n"
+        f"branch the gate assigned: {meta.get('branch', '(none)')}\n"
+        f"\nfirst line:\n{first}\n"
+    )
+    if note:
+        body += f"\ntheir notes:\n{note}\n"
+    body += ("\nThe CSV is attached. It is NOT stored on the server -- the free "
+             "instance wipes its disk on every restart, so this mail is the "
+             "only copy.\n")
+
+    em = EmailMessage()
+    em["From"] = f"{SENDER_NAME} <{user}>"
+    em["To"] = JIM_ADDRESS
+    em["Subject"] = f"[UPLOAD] {rows:,} rows from {who}"
+    em["Reply-To"] = REPLY_ADDRESS
+    em.set_content(body)
+    em.add_attachment(csv_text.encode("utf-8", "replace"),
+                      maintype="text", subtype="csv",
+                      filename=f"upload_{job}.csv")
+    try:
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=60) as smtp:
+            smtp.login(user, password)
+            smtp.send_message(em)
+        try:
+            counter.write_text(f"{stamp} {n + 1}")
+        except Exception as exc:  # noqa: BLE001 - the mail went, do not fail on bookkeeping
+            print(f"COLLECT: counter not written: {exc}", flush=True)
+        print(f"COLLECT: upload {job} mailed to {JIM_ADDRESS} "
+              f"({rows:,} rows, {n + 1}/{cap} today)", flush=True)
+        return True
+    except Exception as exc:                     # noqa: BLE001
+        print(f"COLLECT: SMTP FAILED for upload {job}: {exc}", flush=True)
+        return False

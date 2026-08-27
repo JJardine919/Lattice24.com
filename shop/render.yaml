@@ -29,6 +29,13 @@ services:
       # TEMPORARY, this session only: raised so the ceiling can actually be
       # binary-searched. The measured value is set in the follow-up commit and
       # this comment goes with it.
+      # Collect the file instead of running the engine on this host. Measured
+      # 2026-08-26: 600 rows took 181 s and returned "engine timeout after
+      # 180s", so the engine cannot serve a real file inside Render's limit.
+      # Collecting has no ceiling and is what the customer is promised.
+      - key: SHOP_COLLECT_ONLY
+        value: "1"
+
       - key: SHOP_MAX_ROWS
         value: "20000"
 

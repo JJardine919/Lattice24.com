@@ -71,6 +71,15 @@ ENGINE_SECS = 180
 # default is the only lever a push controls, and it is where the measured
 # ceiling has to go.
 MAX_ROWS = int(os.environ.get("SHOP_MAX_ROWS", "20000"))
+#: Collect the file instead of running the engine on it.
+#:
+#: Measured 2026-08-26 on the live free instance: a 600-row file took 181 s and
+#: returned "engine timeout after 180s". The row ceiling that would make the
+#: engine safe here has never been measured, and MIN_ROWS is 200 -- so the
+#: honest window may be nearly empty. Collecting the file costs nothing, has no
+#: ceiling, and is what the customer is actually promised: a read back from a
+#: person. The engine then runs on a machine that can finish it.
+COLLECT_ONLY = os.environ.get("SHOP_COLLECT_ONLY", "1") != "0"
 TEASER_LINES = 45
 STRIPE_SK   = os.environ.get("STRIPE_SECRET_KEY", "")
 PRICE_ID    = os.environ.get("STRIPE_PRICE_ID", "")
@@ -687,7 +696,10 @@ class Handler(BaseHTTPRequestHandler):
         # a row. Refuse before the engine, and say the actual number -- "too
         # many rows" with no number is the same dead end as a timeout.
         n_rows = max(0, len([ln for ln in csv.splitlines() if ln.strip()]) - 1)
-        if n_rows > MAX_ROWS:
+        # In collect mode the engine never runs here, so the host's 180 s limit
+        # does not apply and there is no honest reason to refuse a big file.
+        # The byte cap above is still the real guard.
+        if n_rows > MAX_ROWS and not COLLECT_ONLY:
             # This is a CANNOT-READ, labelled as one. It is an answer plus a
             # specific ask, which is the whole contract of that branch -- it is
             # not a fourth branch where nothing happens. It is decided before
@@ -781,7 +793,41 @@ class Handler(BaseHTTPRequestHandler):
                 print(f"RATE LIMITED ({why}): job {job}, no mail sent", flush=True)
         except Exception as exc:  # noqa: BLE001
             print("NOTIFY PATH FAILED on intake:", exc, flush=True)
-        if meta["branch"] == "INSTANT":
+        if COLLECT_ONLY:
+            # Mail it out FIRST, then answer. Render's free tier wipes the
+            # filesystem on redeploy and on every spin-down, so the job on
+            # disk is not storage -- the mail is. If the mail fails the
+            # customer is told plainly that it failed, never that we have
+            # their file when we do not.
+            sent = False
+            try:
+                sent = notify.mail_upload_to_jim(job, csv, meta)
+            except Exception as exc:  # noqa: BLE001 -- never lose the answer
+                print(f"COLLECT: handler raised for {job}: {exc}", flush=True)
+            meta["branch"] = "COLLECTED" if sent else "COLLECT_FAILED"
+            meta["done"], meta["ok"] = True, False
+            meta["err"] = ""
+            if sent:
+                msg = (
+                    "# We have your file\n\n"
+                    f"{max(0, len([l for l in csv.splitlines() if l.strip()]) - 1):,} "
+                    "rows received.\n\n"
+                    "A person reads it and comes back to you with what moved, "
+                    "what it costs, and what it cannot support -- including "
+                    "\"nothing here\" if that is the honest answer.\n\n"
+                    "No account, no charge, no call unless you ask for one.\n"
+                )
+            else:
+                msg = (
+                    "# Your file did not reach us\n\n"
+                    "Something on our side failed while receiving it, and we "
+                    "would rather say so than let you think it arrived.\n\n"
+                    "Please email the file to jjj101147@gmail.com and it will "
+                    "be picked up directly.\n"
+                )
+            meta["triage_message"] = msg
+            (job_dir(job) / "report.md").write_text(msg)
+        elif meta["branch"] == "INSTANT":
             run_engine(job, meta)
         else:
             # REVIEW and CANNOT do not run the engine -- there is nothing
