@@ -1,0 +1,45 @@
+# Render service definition, in the repo rather than only in the dashboard.
+#
+# Why this file exists: before 2026-08-26 the only record of how lattice24-com
+# built was inside Render's UI. Nothing on disk or in git said what it ran, so
+# "what is actually deployed?" could not be answered without logging in.
+#
+# Secrets are deliberately absent. Anything with `sync: false` must be set by
+# hand in the dashboard and is never committed.
+services:
+  - type: web
+    name: lattice24-com
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /shop/upload.html
+    envVars:
+      # The Dockerfile already sets HOST=0.0.0.0 and TRUST_PROXY=1. SHOP_SITE was
+      # set NOWHERE, so every report link the server generated pointed at a
+      # default rather than at the host actually serving the job.
+      - key: SHOP_SITE
+        value: https://lattice24-com.onrender.com
+
+      # Row ceiling. 2500 is NOT MEASURED against this tree on this host: the
+      # figure was derived by scaling a hosted timing against a local one, and
+      # the local run used a lighter analyze.py than the one being deployed, so
+      # the true ceiling is LOWER, not inside the old 2,000-3,900 bracket.
+      # Binary-search it against the live 180 s limit after deploy and set it
+      # here. Until then the customer-facing page states no ceiling.
+      - key: SHOP_MAX_ROWS
+        value: "2500"
+
+      # Throttles on the unauthenticated upload endpoint.
+      - key: SHOP_RATE_PER_IP_HOUR
+        value: "3"
+      - key: SHOP_RATE_PER_ADDR_DAY
+        value: "2"
+
+      # --- set by hand in the dashboard, never committed --------------------
+      # Without these the container cannot send mail at all. See the deploy
+      # report: the mail path is host-coupled and needs a code change as well,
+      # so setting these alone does NOT switch mail on.
+      - key: LATTICE24_GMAIL_USER
+        sync: false
+      - key: LATTICE24_GMAIL_APP_PASSWORD
+        sync: false

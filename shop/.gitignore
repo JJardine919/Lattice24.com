@@ -1,4 +1,46 @@
+# --- secrets and credentials -------------------------------------------------
+.env
+*.env
+
+# --- customer data and job output --------------------------------------------
+jobs/
+shop_submissions.json
+
+# --- outreach: contact lists, send state, and drafts about real people --------
+# outreach/sent.json was already ignored; its BACKUP was not, and it holds 400
+# real corporate email addresses. Ignore the data by pattern, not by name, so a
+# new *.bak or a rotated copy cannot slip past the way that one did.
+outreach/*.json
+outreach/*.log
+outreach/*_READY.md
+outreach/last_seen.json
+send.log
+digest.log
+
+# --- runtime state and logs ---------------------------------------------------
+# logs/ is NOT only keep-warm pings: triage_sweep.log carries sweep results.
+logs/
+*.log
+delivery_watch_state.json
+delivery_log.jsonl
+DELIVERY_ALARM.txt
+
+# --- working backups from three concurrent agents -----------------------------
+# 25+ *.bak-* files. They are scratch, they duplicate live source, and one of
+# them was the 400-address file above.
+*.bak
+*.bak-*
+*.orig-*
+*.tmp
+
+# --- build noise --------------------------------------------------------------
 __pycache__/
 *.pyc
-.env
-jobs/
+.pytest_cache/
+
+# 2026-08-26 (task 14 pre-flight): outreach/sent.json is ignored, but a dated
+# .bak of it was not -- it holds 394 real business contacts. Never commit a
+# backup file; they are local editing residue and one of them is a contact list.
+*.bak
+*.bak-*
+*.bak.*

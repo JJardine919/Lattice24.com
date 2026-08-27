@@ -74,6 +74,10 @@ import encoder_fixed as _enc  # noqa: E402  parameterised ladder, same algebra
 
 from aoi_collapse import aoi_collapse  # noqa: E402
 
+import encoder_gate as _gate            # noqa: E402  per-channel encoder health
+import order_screen as _order           # noqa: E402  the arm that replaced perm_order
+import value_note as _value            # noqa: E402  the dollar figure, or the refusal
+
 CHECKSUM = 34.031437
 assert abs(engine.compute_super_logarithm() - CHECKSUM) < 1e-5, "WRONG ENGINE"
 
@@ -249,14 +253,17 @@ def perm_groups(a, b, rng, n=NPERM):
     return obs, (hits + 1) / (n + 1)
 
 
-def perm_order(seq, rng, n=1000):
-    """No labels: does real order differ from shuffled order? Lag-1 statistic,
-    because a plain mean is order-invariant and would test nothing."""
-    seq = np.asarray(seq, float)
-    stat = lambda s: float(np.sqrt(np.mean(np.diff(s) ** 2)))
-    obs = stat(seq)
-    hits = sum(1 for _ in range(n) if stat(rng.permutation(seq)) >= obs)
-    return obs, (hits + 1) / (n + 1)
+# perm_order was REMOVED on 2026-08-26. It returned the upper tail of an
+# RMS-successive-difference statistic against a plain shuffle. Real ordered data
+# is smoother than its own shuffle, so the observed value sat in the LOWER tail
+# and the printed p went to 1.0 -- which the report described as "no sequence
+# structure". A pure ramp scored 1.0000 and read as structureless; the same file
+# with every row scrambled scored 0.0250 and read as MORE structured than the
+# correct one. Flipping the tail was tested and is worse: flipped, a straight
+# line fires at 0.0010. Do not reinstate either version. The replacement is
+# order_screen.screen_channel, which a straight line cannot pass because a
+# monotone window has one ordinal pattern. Full measurement:
+# ~/BUILDS/SHOP_TEST_2026-08-26.md and ~/BUILDS/WORKFLOW_VERIFY_2026-08-26.md.
 
 
 # ---------------------------------------------------------------------------
@@ -275,6 +282,31 @@ def main():
                          "one run are not independent, and comparing them as if "
                          "they were hides real effects in within-run noise.")
     ap.add_argument("--out", default="report.md")
+    # Pricing. Every one of these comes from the customer. There is no default
+    # price, no default emission factor and no default period anywhere in this
+    # program: if any is missing the report prints no figure and says what is
+    # missing. The price per tonne is NEVER hardcoded -- it is a market rate, it
+    # moves, and it travels with its source, its date and its market.
+    # See value_note.py.
+    ap.add_argument("--value-col", default=None,
+                    help="column that meters the quantity being lost")
+    ap.add_argument("--value-unit", default=None,
+                    help="what one unit of that column is, e.g. 'Mscf per hour'")
+    ap.add_argument("--hours", type=float, default=None,
+                    help="hours of process time this record covers")
+    ap.add_argument("--co2e-per-unit", type=float, default=None,
+                    help="tonnes CO2e per one unit of that column (YOUR factor)")
+    ap.add_argument("--co2e-source", default=None,
+                    help="where that emission factor came from")
+    ap.add_argument("--price-per-tonne", type=float, default=None,
+                    help="market price per tonne CO2e AT THE TIME OF PURCHASE")
+    ap.add_argument("--price-source", default=None,
+                    help="where that price came from")
+    ap.add_argument("--price-date", default=None,
+                    help="the date that price was taken")
+    ap.add_argument("--market", default=None,
+                    help="which market: avoidance/removal, compliance/voluntary")
+    ap.add_argument("--currency", default="USD")
     a = ap.parse_args()
 
     rng = np.random.default_rng(20260806)
@@ -283,9 +315,12 @@ def main():
     L.append(f"# Sensor / process report\n")
     L.append(f"File `{Path(a.csv).name}` · {X.shape[0]:,} rows · "
              f"{X.shape[1]} usable channels")
-    L.append(f"Engine checksum {engine.compute_super_logarithm():.6f} "
-             f"(required {CHECKSUM}) · "
-             f"{datetime.now(timezone.utc).strftime('%Y-%m-%d')}\n")
+    L.append(f"Engine build {engine.compute_super_logarithm():.6f} · "
+             f"{datetime.now(timezone.utc).strftime('%Y-%m-%d')}")
+    L.append("*That number identifies which transponder configuration ran. It "
+             "takes no data and returns the same value on the right input, the "
+             "wrong input, or none — it is a build stamp, not a check on your "
+             "file. The checks on your file are below, and each one can fail.*\n")
 
     if X.shape[0] < MIN_ROWS:
         L.append(f"**Stopped.** {X.shape[0]} rows is too few to read; "
@@ -296,59 +331,111 @@ def main():
 
     nch = min(NCH, X.shape[1])
     if X.shape[1] < NCH:
-        W.append(f"Only {X.shape[1]} channels supplied; the engine takes {NCH}. "
-                 f"The remaining slots are zero-filled, which weakens the read.")
+        W.append(f"{X.shape[1]} usable channels were read; the engine reads "
+                 f"{NCH} slots, so {NCH - X.shape[1]} sat empty and contribute "
+                 f"nothing. If you sent more than {X.shape[1]} numeric columns, "
+                 f"the missing ones held a value that would not parse as a "
+                 f"number (a blank, an `N/A`, a units suffix) — one such cell "
+                 f"drops the whole column. Nothing was misaligned; the columns "
+                 f"that were read were read correctly.")
     vecs = windows(X, nch, rng, groups)
+    if groups is not None and len(vecs) < 3:
+        L.append(f"\n**Stopped — grouping by `{a.group_col}` leaves nothing to "
+                 f"read.** A window is {WIN} consecutive rows of one run, and no "
+                 f"window may straddle two runs, so a run shorter than {WIN} "
+                 f"rows contributes none. Your file has "
+                 f"{len(set(groups)):,} runs across {X.shape[0]:,} rows and "
+                 f"produced {len(vecs)} usable window(s).")
+        L.append(f"\nThis is a shape problem in the request, not a finding "
+                 f"about your process. Either `{a.group_col}` is not the column "
+                 f"that identifies a run — a row id or a timestamp will do this "
+                 f"— or the runs are genuinely shorter than {WIN} samples, in "
+                 f"which case send the file without `--group-col` and it will "
+                 f"be read as one continuous record.")
+        Path(a.out).write_text("\n".join(L))
+        print(f"wrote {a.out} — REFUSED, grouping leaves {len(vecs)} windows")
+        return
+
+    available = len(range(0, len(X) - WIN, WIN))
+    used_rows = len(vecs) * WIN
     L.append(f"Read as {len(vecs)} windows of {WIN} consecutive samples "
-             f"across {nch} channels: {', '.join(names[:nch])}\n")
+             f"across {nch} channels: {', '.join(names[:nch])}")
+    if len(vecs) < available:
+        L.append(f"\nThat is a random sample of {len(vecs)} of the "
+                 f"{available:,} non-overlapping windows your file contains — "
+                 f"**{used_rows:,} of {X.shape[0]:,} rows, "
+                 f"{100.0 * used_rows / X.shape[0]:.1f}%.** The sample is drawn "
+                 f"once with a fixed seed, so re-running this file gives the "
+                 f"same windows and the same report.\n")
+    else:
+        L.append(f"\nThat is every non-overlapping window in the file — "
+                 f"{used_rows:,} of {X.shape[0]:,} rows, "
+                 f"{100.0 * used_rows / X.shape[0]:.1f}%.\n")
     if groups:
         L.append(f"Grouped by `{a.group_col}` into {len(set(groups))} runs. "
                  f"Readings are averaged within each run before runs are compared, "
                  f"because windows inside one run are not independent of each "
                  f"other.\n")
 
-    # ---- gate 1 ----
-    occ = occupancy(vecs)
-    end = occ[0] + occ[4]
-    L.append("## Encoder check\n")
-    L.append("| bin | share |\n|---|---|")
-    for i, lab in enumerate(["< -0.2%", "-0.2..-0.05%", "flat", "+0.05..0.2%", "> +0.2%"]):
-        L.append(f"| {lab} | {occ[i]:.3f} |")
-    L.append(f"\nEnd-bin mass **{end:.4f}** on the standard scale.")
-    ticks = None
-    if end > SAT_LIMIT:
-        ticks = recalibrate(vecs)
-        occ2 = occupancy(vecs, ticks) if ticks else None
-        end2 = (occ2[0] + occ2[4]) if occ2 is not None else 1.0
-        if occ2 is None or end2 > SAT_LIMIT:
-            L.append(
-                f"\n**Stopped — this data cannot be read on any scale.** "
-                f"{end * 100:.2f}% of sample-to-sample changes fall in the two "
-                f"extreme bins, and refitting the scale to your own data does not "
-                f"fix it. That normally means consecutive rows are not consecutive "
-                f"measurements of the same thing — columns on wildly different "
-                f"scales interleaved, or rows not in time order. Check the row "
-                f"ordering and send it again. No reading is reported, because a "
-                f"flat channel returns a confident-looking result that means "
-                f"nothing.")
-            Path(a.out).write_text("\n".join(L))
-            print(f"wrote {a.out} — REFUSED, saturated on both scales ({end:.4f})")
-            return
-        L.append(
-            f"\n**The standard scale saturates on your data, so it was refitted.** "
-            f"The default cut points are sized for slowly-varying, positive-valued "
-            f"process channels; yours move faster than that or pass through zero. "
-            f"Refitting to your own change distribution brings end-bin mass to "
-            f"**{end2:.4f}**, which is readable.\n\n"
-            f"Worth being exact about what was fitted: **the cut points were set "
-            f"from the shape of your data's changes only. No labels were used.** "
-            f"The scale cannot be tuned toward a result — it can only be put where "
-            f"your data actually lives. Everything below is measured on that scale.")
-        occ = occ2
-    else:
-        L.append(f" Healthy — the channel has room to move. "
-                 f"(Saturation would be >{SAT_LIMIT}.)\n")
+    # ---- gate 1 -- PER CHANNEL, with a refusal that can fire ----
+    #
+    # Pooled was the defect. Measured 2026-08-26 on the 16-channel refinery
+    # file: pooled end-bin mass 0.5407 printed as "Healthy", while sensor_01
+    # sat at 0.9726 and sensor_02 at 0.9864, both past the gate. See
+    # encoder_gate.py for why the old refusal branch was unreachable.
+    gates = _gate.gate_all(vecs, names, nch)
+    L.append("## Encoder check — every channel, separately\n")
+    L.append("The measurement ladder is checked on each channel on its own. An "
+             "earlier version of this report pooled them, which let two "
+             "saturated channels hide behind fourteen healthy ones and printed "
+             "\"Healthy\" over the top.\n")
+    L.append("| channel | end-bin mass | after refit | status |\n|---|---|---|---|")
+    for g in gates:
+        refit = "—" if g["refit_end"] is None else f"{g['refit_end']:.4f}"
+        end = "—" if g["end"] != g["end"] else f"{g['end']:.4f}"
+        L.append(f"| {g['channel']} | {end} | {refit} | {g['status']} |")
+    refused = [g for g in gates if g["status"] == "REFUSED"]
+    readable = [g for g in gates if g["status"] in ("readable", "refitted")]
+    refitted = [g for g in gates if g["status"] == "refitted"]
+    L.append(f"\nEnd-bin mass is the share of sample-to-sample changes landing "
+             f"in the two extreme bins. Above {SAT_LIMIT} the ladder is "
+             f"saturated and the channel is re-checked on a ladder refit to its "
+             f"own changes; if no ladder can be placed on it, it is refused and "
+             f"nothing is reported for it.")
 
+    if not readable:
+        L.append(f"\n**Stopped — this data cannot be read on any scale.** "
+                 f"All {len(gates)} channels were refused:\n")
+        for g in refused:
+            L.append(f"- `{g['channel']}` — {g['why']}")
+        L.append("\nNo reading is reported, because a flat or collapsed channel "
+                 "returns a confident-looking result that means nothing. The "
+                 "usual causes are columns on wildly different scales "
+                 "interleaved into one file, a channel logged at a resolution "
+                 "coarser than the movement you care about, or rows that are "
+                 "not consecutive measurements of the same quantity.")
+        Path(a.out).write_text("\n".join(L))
+        print(f"wrote {a.out} — REFUSED, no channel readable")
+        return
+
+    if refused:
+        W.append("**" + str(len(refused)) + " of " + str(len(gates)) +
+                 " channels were refused and are not in any number below**: " +
+                 "; ".join(f"`{g['channel']}` — {g['why']}" for g in refused))
+
+    # The reading ladder is one scale for the whole 128-vector, so it is
+    # refitted when ANY readable channel needed it. Which channels needed it is
+    # on the table above rather than hidden behind a pooled figure.
+    ticks = None
+    if refitted:
+        ticks = recalibrate(vecs)
+        L.append(f"\n**{len(refitted)} of {len(gates)} channels saturate the "
+                 f"standard ladder, so the reading scale was refit** to the "
+                 f"shape of this file's own changes. Labels were never "
+                 f"consulted, so the scale cannot be tuned toward a result — "
+                 f"it can only be put where your data lives. One ladder is used "
+                 f"for the whole read, so it is refit whenever any readable "
+                 f"channel needs it; the table above says which ones did.")
     # ---- read ----
     fit = [state24(encode(v, ticks), onescale=False) for _, v in vecs[:200]]
     scaler = SlotScaler().fit(fit)
@@ -357,6 +444,8 @@ def main():
              "control": [r[3] for r in rows], "anomaly": [r[4] for r in rows]}
 
     L.append("## Result\n")
+    _order_results = []
+    _label_result = None
     if labels:
         starts = [r[0] for r in rows]
         lab_at = [labels[min(s, len(labels) - 1)] for s in starts]
@@ -400,7 +489,29 @@ def main():
                 d, p = perm_groups(A, B, np.random.default_rng(7))
                 tag = "**primary**" if first else "secondary"
                 sig = "separates" if p is not None and p < 0.05 else "—"
-                L.append(f"| {nm} {tag} | {d:+.5f} | {p:.4f} | {sig} |")
+                # perm_groups returns p=None when a side has fewer than three
+                # values -- one run, or every run a singleton. Formatting None
+                # with :.4f raised TypeError and killed the whole report, so a
+                # customer with one batch id got a Python traceback instead of a
+                # report. Found 2026-08-26 testing --group-col with pricing.
+                pcell = "not enough runs" if p is None else f"{p:.4f}"
+                dcell = "—" if d != d else f"{d:+.5f}"
+                L.append(f"| {nm} {tag} | {dcell} | {pcell} | {sig} |")
+                if first and p is None:
+                    W.append(
+                        f"**The groups could not be compared.** Splitting by "
+                        f"`{a.group_col}` left fewer than three runs on one "
+                        f"side, so the permutation test has nothing to permute. "
+                        f"That is a shape problem in the request, not a finding "
+                        f"about your process — it needs several runs of each "
+                        f"condition.")
+                if first:
+                    # The primary verdict travels to the money block. Without
+                    # this the priced section was byte-identical for a file
+                    # whose labels were coin flips and one at p = 0.0002.
+                    _label_result = ({"channel": nm, "p": p, "g0": g0, "g1": g1,
+                                      "separates": bool(p < 0.05)}
+                                     if p is not None else None)
                 first = False
             L.append("\np is a permutation test on the labels, 4000 draws. "
                      "A secondary channel does not rescue a null primary — with "
@@ -453,24 +564,102 @@ def main():
     else:
         L.append("No label column given, so this describes structure rather than "
                  "comparing groups.\n")
-        L.append("| channel | order effect | p |\n|---|---|---|")
-        for nm, v in chans.items():
-            s, p = perm_order(v, np.random.default_rng(9))
-            L.append(f"| {nm} | {s:.5f} | {p:.4f} |")
-        L.append("\np compares the real sample order against shuffled order. "
-                 "A high p means the readings carry no sequence structure — "
-                 "which is a result, not a failure.")
+        L.append("### Does the order of your rows carry information?\n")
+        # perm_order used to answer this and answered it backwards -- see
+        # order_screen.py. It is replaced by permutation entropy against a
+        # shuffle of the same values, which a straight line cannot pass because
+        # a monotone window realises one ordinal pattern and is refused
+        # structurally, not by a threshold.
+        keep = [i for i, g in enumerate(gates) if g["status"] != "REFUSED"]
+        res = [(names[i], _order.screen_channel(X[:, i],
+                                                np.random.default_rng(4242 + i)))
+               for i in keep]
+        _order_results = res
+        L.append("| channel | windows read | ordinal structure | median z | "
+                 "straight-line windows | trend / persistence |")
+        L.append("|---|---|---|---|---|---|")
+        for nm, r in res:
+            mz = "—" if r["median_z"] != r["median_z"] else f"{r['median_z']:+.2f}"
+            L.append(f"| {nm} | {r['ran']}/{r['windows']} | "
+                     f"{r['fired']}/{r['ran']} | {mz} | {r['degenerate']} | "
+                     f"{r['trend']}/{r['windows']} |")
+        n_reads = sum(1 for _, r in res if r["reads"])
+        touched = max((r["rows_touched"] for _, r in res), default=0)
+        L.append(f"\n**{n_reads} of {len(res)} channels carry ordinal structure "
+                 f"beyond their own values.**\n")
+        L.append(f"Coverage, exactly: {len(res)} of {X.shape[1]} channels "
+                 f"screened, {_order.n_windows(X.shape[0])} windows of "
+                 f"{_order.PTS} consecutive rows plus one window of "
+                 f"{_order.PTS} points sampled across the whole record, per "
+                 f"channel — **{touched:,} of {X.shape[0]:,} rows, "
+                 f"{100.0 * touched / X.shape[0]:.1f}% of your file.**\n")
+        L.append("How to read the columns:\n")
+        L.append(f"- **ordinal structure** counts the windows where the real "
+                 f"order of the 24 points differs from {_order.NSHUF} shuffles "
+                 f"of the same 24 values, at |z| ≥ {_order.WIN_Z}. A channel is "
+                 f"only called a read when a majority of its windows fire and "
+                 f"at least {_order.MIN_FIRES} do. On pure iid noise single "
+                 f"windows fire about 5% of the time, which is why one window "
+                 f"is not an answer.")
+        L.append("- **straight-line windows** are windows the test refused to "
+                 "run because the 24 points were monotone. A straight line has "
+                 "one ordinal pattern, so this statistic is 0 by construction "
+                 "and cannot fire on it — that is a structural refusal, not a "
+                 "silent pass.")
+        L.append("- **trend / persistence** is plain lag-1 autocorrelation "
+                 "against the same shuffles. It is reported separately and it "
+                 "is never the headline: **a straight line passes it with the "
+                 "strongest possible score.** A high count here with no ordinal "
+                 "structure means your channel drifts, which is real and is not "
+                 "evidence of anything beyond a drift.")
+        L.append(f"- **Multiplicity.** {len(res)} channels were tested. At the "
+                 f"single-window level about 5% of windows fire on pure noise, "
+                 f"so roughly {0.05 * len(res) * _order.n_windows(X.shape[0]):.0f} "
+                 f"stray window-fires are expected across this file by luck "
+                 f"alone. The majority rule is what keeps those out of the "
+                 f"channel count: measured on 16 channels of pure noise, it "
+                 f"returned 0 channels. That count, not the per-window column, "
+                 f"is the number to read.")
+        near = [(nm, r) for nm, r in res
+                if not r["reads"] and r["ran"]
+                and r["fired"] >= max(_order.MIN_FIRES, (r["ran"] + 1) // 2) - 2]
+        if near:
+            L.append("- **Channels close to the line, named so you are not "
+                     "surprised by them later.** These did not clear the "
+                     "majority rule, and a different random seed could move one "
+                     "of them across it: "
+                     + ", ".join(f"`{nm}` ({r['fired']}/{r['ran']})"
+                                 for nm, r in near)
+                     + ". The count above is reproducible — the seed is fixed — "
+                       "but reproducible is not the same as stable, and a "
+                       "borderline channel is a borderline channel.")
+        L.append("\nWhat this arm is **not**: it is not the collapse engine. "
+                 "The collapse engine's own verdict on the same windows is in "
+                 "the annex at the end of this report, and the two answer "
+                 "different questions. Neither stands in for the other.")
 
     if W:
         L.append("\n## Read this before acting on the above\n")
         for w in W:
             L.append(f"- {w}")
 
+    priced_channel = None
+    if a.value_col:
+        priced_channel = dict(_order_results).get(a.value_col)
+    L += _value.value_block(X, names, a, priced_channel, _label_result)
+
     L.append("\n## What this does not tell you\n")
     L.append("- It does not say a channel is *correct*, only whether it moves.")
     L.append("- It does not replace your instruments or your calibration schedule.")
-    L.append("- Nothing here was fitted to your data, so nothing is tuned to "
-             "flatter it. The same pipeline runs on every file unchanged.")
+    L.append("- Two things here ARE fitted to your data, and both are "
+             "unsupervised: the slot scaler is fit to the first 200 windows of "
+             "your file, and the measurement ladder is refit to your own change "
+             "distribution when the standard one saturates. Neither ever sees a "
+             "label, so neither can be tuned toward a result — but it is not "
+             "true that nothing was fitted, and an earlier version of this "
+             "report said so.")
+    L.append("- No model is fitted to predict anything. The engine's outputs "
+             "are the measurement; they are not fed to a regression and scored.")
     L.append("\n---\nLattice24 · James Jardine · ORCID 0009-0004-9073-7192")
 
     Path(a.out).write_text("\n".join(L))

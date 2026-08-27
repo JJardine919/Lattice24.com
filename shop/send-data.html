@@ -1,0 +1,234 @@
+<meta charset="utf-8">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<title>Send one file, get one report — Lattice24</title>
+<meta name="description" content="Send one CSV of process or sensor data and get back a report saying what moved, what it costs you, and what the data cannot support. First one is free.">
+
+<style>
+  :root {
+    --ground: #F5F4F1; --panel: #FFFFFF; --ink: #16191B; --ink-soft: #4C5559;
+    --ink-faint: #7C8688; --rule: #DBD9D3; --rule-soft: #EAE8E3;
+    --signal: #A9601A; --signal-soft: #F0E2CE; --good: #3F6B52; --crit: #A33C33;
+    --measure: 68ch;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0E1113; --panel: #14181A; --ink: #E8E9E6; --ink-soft: #A3AAAB;
+      --ink-faint: #6E7779; --rule: #262C2E; --rule-soft: #1C2123;
+      --signal: #E0A253; --signal-soft: #2A2118; --good: #7FB08F; --crit: #D9736A;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0E1113; --panel: #14181A; --ink: #E8E9E6; --ink-soft: #A3AAAB;
+    --ink-faint: #6E7779; --rule: #262C2E; --rule-soft: #1C2123;
+    --signal: #E0A253; --signal-soft: #2A2118; --good: #7FB08F; --crit: #D9736A;
+  }
+  :root[data-theme="light"] {
+    --ground: #F5F4F1; --panel: #FFFFFF; --ink: #16191B; --ink-soft: #4C5559;
+    --ink-faint: #7C8688; --rule: #DBD9D3; --rule-soft: #EAE8E3;
+    --signal: #A9601A; --signal-soft: #F0E2CE; --good: #3F6B52; --crit: #A33C33;
+  }
+  * { box-sizing: border-box; }
+  .page {
+    background: var(--ground); color: var(--ink);
+    font-family: Charter, "Bitstream Charter", "Sitka Text", Cambria, Georgia, serif;
+    font-size: 17px; line-height: 1.62;
+    padding: clamp(1.75rem, 5vw, 5rem) clamp(1.1rem, 5vw, 2rem) 5rem;
+    min-height: 100vh;
+  }
+  .wrap { max-width: var(--measure); margin: 0 auto; display: flex; flex-direction: column; gap: 2.75rem; }
+  .eyebrow {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.66rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink-faint); margin: 0;
+  }
+  h1 {
+    font-family: "Helvetica Neue", Inter, system-ui, sans-serif;
+    font-size: clamp(1.85rem, 5vw, 2.7rem); line-height: 1.1; font-weight: 700;
+    letter-spacing: -0.021em; text-wrap: balance; margin: 0.5rem 0 0;
+  }
+  h2 {
+    font-family: "Helvetica Neue", Inter, system-ui, sans-serif;
+    font-size: 1.13rem; font-weight: 700; letter-spacing: -0.008em;
+    text-wrap: balance; margin: 0 0 0.15rem;
+    padding-top: 1.1rem; border-top: 1px solid var(--rule);
+  }
+  p { margin: 0; }
+  .lede { font-size: 1.09rem; color: var(--ink-soft); }
+  strong { font-weight: 700; color: var(--ink); }
+  section { display: flex; flex-direction: column; gap: 0.9rem; }
+  .byline {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.73rem; color: var(--ink-faint); line-height: 1.75;
+    padding-bottom: 1.5rem; border-bottom: 2px solid var(--ink);
+  }
+  .readout {
+    background: var(--panel); border: 1px solid var(--rule);
+    border-left: 3px solid var(--signal);
+    padding: 1.3rem 1.4rem; display: flex; flex-direction: column; gap: 1rem;
+  }
+  .readout-head {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.68rem; letter-spacing: 0.13em; text-transform: uppercase; color: var(--ink-faint);
+  }
+  .pair { display: flex; flex-wrap: wrap; gap: 1.75rem; }
+  .val { display: flex; flex-direction: column; gap: 0.15rem; }
+  .val .n {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 1.85rem; font-weight: 600; font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em; line-height: 1;
+  }
+  .val .n.sig { color: var(--signal); }
+  .val .k { font-size: 0.79rem; color: var(--ink-soft); font-family: "Helvetica Neue", Inter, system-ui, sans-serif; }
+  .readout .note { font-size: 0.88rem; color: var(--ink-soft); }
+  ul { margin: 0; padding-left: 1.15rem; display: flex; flex-direction: column; gap: 0.6rem; }
+  li::marker { color: var(--ink-faint); }
+  .steps { list-style: none; padding: 0; counter-reset: s; gap: 1rem; }
+  .steps li { counter-increment: s; display: grid; grid-template-columns: 1.9rem 1fr; gap: 0.75rem; align-items: start; }
+  .steps li::before {
+    content: counter(s, decimal-leading-zero);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.75rem;
+    color: var(--signal); padding-top: 0.28rem;
+  }
+  .flags { display: flex; flex-direction: column; gap: 0.55rem; }
+  .flag { display: grid; grid-template-columns: auto 1fr; gap: 0.7rem; align-items: baseline; font-size: 0.95rem; }
+  .flag .m {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.68rem;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--crit);
+  }
+  .flag .m.ok { color: var(--good); }
+  pre {
+    background: var(--panel); border: 1px solid var(--rule); border-radius: 3px;
+    padding: 0.9rem 1rem; overflow-x: auto; font-size: 0.8rem;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; margin: 0;
+    color: var(--ink-soft); line-height: 1.5;
+  }
+  a { color: var(--signal); text-decoration-thickness: 1px; text-underline-offset: 2.5px; }
+  a:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
+  .cta {
+    background: var(--signal-soft); border: 1px solid var(--signal);
+    padding: 1.3rem 1.4rem; display: flex; flex-direction: column; gap: 0.7rem;
+  }
+  .cta .addr {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 1.05rem; font-weight: 600;
+  }
+  footer {
+    border-top: 2px solid var(--ink); padding-top: 1.4rem;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.73rem; color: var(--ink-faint); line-height: 1.85;
+  }
+  @media (max-width: 480px) { .val .n { font-size: 1.5rem; } }
+</style>
+
+<div class="page">
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">Lattice24</p>
+    <h1>Send one file. Get one report.</h1>
+    <p class="lede">No meeting, no call, no site visit, no software to install.
+    You email a CSV of data you already log. I run it and email back what moved,
+    what the numbers will support, and what they will not.</p>
+  </header>
+
+  <p class="byline">
+    James Jardine &middot; ORCID 0009-0004-9073-7192<br>
+    Thirty years a pipefitter in Alberta gas plants. I write the software myself.
+  </p>
+
+  <section>
+    <h2>What you send</h2>
+    <p>One CSV. Historical is fine, redacted is fine, one unit is enough.</p>
+    <ul>
+      <li><strong>Rows in time order</strong> &mdash; oldest first. A few hundred at minimum; a few thousand is better.</li>
+      <li><strong>One column per channel.</strong> Sixteen is the natural fit. Fewer works and is stated as a limitation in the report.</li>
+      <li><strong>Optional:</strong> a column naming the run or batch, and a column labelling condition &mdash; <code>ok</code> / <code>fault</code>, before / after, whatever you use.</li>
+    </ul>
+    <p>No system access. No VPN. No agent on your network. A file goes one way and
+    a report comes back the other.</p>
+  </section>
+
+  <section>
+    <h2>What comes back</h2>
+    <ul class="steps">
+      <li>Whether each channel carries a readable signal at all, or is too flat to say anything about.</li>
+      <li>If you labelled conditions: whether the groups actually separate, with a permutation test behind the number rather than an assertion.</li>
+      <li>Every confound I can see from the file itself &mdash; stated on the face of the report, not buried.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>A worked example you can check yourself</h2>
+    <p>Run on <strong>IndPenSim</strong>, a public 100-batch penicillin fermentation
+    dataset &mdash; 113,935 samples, 22 process sensors, ten batches with a known
+    fault. Nothing here is my data or my customer's; you can download it and repeat it.</p>
+
+    <div class="readout">
+      <p class="readout-head">Fault batches vs healthy &middot; same control regime</p>
+      <div class="pair">
+        <div class="val">
+          <span class="n sig">p = 0.018</span>
+          <span class="k">The engine separated the faulted batches</span>
+        </div>
+        <div class="val">
+          <span class="n">p = 0.22</span>
+          <span class="k">Control comparison &mdash; healthy vs healthy, correctly found nothing</span>
+        </div>
+      </div>
+      <p class="note">The second number matters as much as the first. A test that
+      cannot come back empty is not a test.</p>
+    </div>
+
+    <p>Two things the report said out loud, unprompted:</p>
+    <div class="flags">
+      <div class="flag"><span class="m">Flag</span><span>The faulted batches were all run at the end of the campaign, so "faulted" and "run last" cannot be told apart from this file. The finding is suggestive, not settled &mdash; and no analysis fixes that after the fact.</span></div>
+      <div class="flag"><span class="m">Flag</span><span>Comparing the faults against <em>all</em> 90 healthy batches gives an effect roughly 2.4&times; larger &mdash; because those 90 span three different control strategies. Against the 30 that actually match, it shrinks. The published figure for this dataset uses the larger comparison.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>What it refuses to do</h2>
+    <p>Each of these is a mistake I made, found, and turned into a gate.</p>
+    <div class="flags">
+      <div class="flag"><span class="m">Stops</span><span>If the measurement scale saturates on your data, it reports nothing and tells you why. A flat channel returns a clean, believable null that means nothing at all.</span></div>
+      <div class="flag"><span class="m">Stops</span><span>No number is reported without a control that could have killed it.</span></div>
+      <div class="flag"><span class="m">Never</span><span>No model is trained on your data and no threshold is tuned toward an answer. The one thing that can adapt is the measurement scale &mdash; if your channels move too fast for the standard one, it is refitted to your data's own spread and the report says so on its face. That refit reads the shape of your data only; <strong>it never sees your labels</strong>, so it cannot be steered toward a result you were hoping for.</span></div>
+      <div class="flag"><span class="m ok">Says so</span><span>If your data cannot answer your question, that is the report. You will get a plain "this does not show what you were hoping" rather than a number dressed up to look like one.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Cost</h2>
+    <p><strong>The first file costs nothing.</strong> No account, no card, no trial
+    that converts. You get the report and decide whether it was worth anything. If
+    it was not, we are done and you have lost one data export.</p>
+    <p>I have no production customers yet. You would be the first, which is exactly
+    why I am not asking for money.</p>
+  </section>
+
+  <section>
+    <h2>Send it</h2>
+    <div class="cta">
+      <p class="addr"><a href="mailto:jjj101147@gmail.com?subject=Data%20for%20analysis">jjj101147@gmail.com</a></p>
+      <p style="font-size:0.92rem;">Attach the CSV, or a link to it if it is large.
+      One line about what the channels are and what you are trying to find out is
+      enough &mdash; I will ask if I need more. Reply comes by email; I do not need
+      a call and will not ask you for one.</p>
+    </div>
+    <p style="font-size:0.92rem;color:var(--ink-soft);">If your file is too
+    sensitive to send, say so and I will tell you exactly which columns and how
+    many rows would be enough, or how to shift and rescale it so the structure
+    survives and the values do not.</p>
+  </section>
+
+  <footer>
+    LATTICE24 &middot; JAMES JARDINE &middot; ORCID 0009-0004-9073-7192<br>
+    Engine <a href="https://doi.org/10.5281/zenodo.18918783">10.5281/zenodo.18918783</a><br>
+    Worked example is public data. Methods and negative results in the record.<br>
+    <a href="/">&larr; Lattice24</a> &middot;
+    <a href="/carbon.html">GPU fleet carbon calculator</a> &middot;
+    <a href="/audit.html">Sensor entropy audit</a>
+  </footer>
+
+</div>
+</div>

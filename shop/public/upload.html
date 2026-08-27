@@ -17,8 +17,11 @@
   .eyebrow { font-family:ui-monospace,Menlo,monospace; font-size:.66rem; letter-spacing:.16em;
              text-transform:uppercase; color:var(--ink-soft); margin:0; }
   label { display:block; font-family:sans-serif; font-size:.85rem; margin:.9rem 0 .25rem; color:var(--ink-soft); }
-  input[type=text], input[type=email] { width:100%; padding:.6em .7em; font-size:1rem;
-    background:var(--panel); color:var(--ink); border:1px solid var(--rule); border-radius:4px; }
+  input[type=text], input[type=email], textarea {
+    width:100%; padding:.6em .7em; font-size:1rem;
+    background:var(--panel); color:var(--ink); border:1px solid var(--rule); border-radius:4px;
+    font-family:Georgia,serif; }
+  textarea { resize:vertical; min-height:6em; }
   input[type=file] { width:100%; padding:.6em 0; }
   button { background:var(--signal); color:#fff; border:none; border-radius:4px;
            padding:.85em 1.6em; font-size:1rem; font-family:sans-serif; cursor:pointer; margin-top:1.2rem; }
@@ -41,10 +44,21 @@
      (<a href="https://doi.org/10.5281/zenodo.18763166">DOI 10.5281/zenodo.18763166</a>).</p>
 
   <div>
-    <label for="f">Your data (CSV, up to 5 MB)</label>
+    <label for="f">Your data (CSV &mdash; up to 5&nbsp;MB, 200 rows minimum)</label>
     <input type="file" id="f" accept=".csv,text/csv">
+
     <label for="e">Email for the receipt &amp; your report link</label>
     <input type="email" id="e" placeholder="you@company.com">
+
+    <label for="n">Notes for your report (what the channels measure — visible on the report)</label>
+    <textarea id="n" placeholder="e.g. Channel 1: flare stack temperature, Channel 2: compressor discharge pressure, daily readings"></textarea>
+
+    <label for="cl">Which of your sites or clients is this for? (optional)</label>
+    <input type="text" id="cl" placeholder="e.g. Henry Doorly Zoo &mdash; chiller plant">
+
+    <label for="ni">Internal note (not shown on the report — for the analyst)</label>
+    <textarea id="ni" placeholder="e.g. Data pulled from historian on 2026-08-20, may include a calibration shift around row 400"></textarea>
+
     <details style="font-size:.9rem;color:var(--ink-soft);margin-top:.8rem;">
       <summary>Optional columns (if your rows have conditions or batches)</summary>
       <label for="l">Label column name (e.g. status)</label>
@@ -52,16 +66,32 @@
       <label for="g">Group column name (e.g. batch/run id)</label>
       <input type="text" id="g" placeholder="batch">
     </details>
+
     <button id="go">Run the engine</button>
     <p id="msg"></p>
   </div>
 
   <p style="font-size:.9rem;color:var(--ink-soft);">
-    The first look at the top-line findings is free. The full annotated report is $249,
-    unlockable right on the results page. Your file is stored once, shown to you, and to nobody else.
+    <strong>The whole report is free.</strong> There is nothing to unlock and nothing to pay for &mdash;
+    an earlier version of this page advertised a $249 upgrade for a report the results page was already
+    serving in full, which was not true and has been removed. Your file is stored once, shown to you,
+    and to nobody else.
+  </p>
+  <p style="font-size:.9rem;color:var(--ink-soft);">
+    <strong>Size that actually works here:</strong> at least 200 rows (below that the engine refuses,
+    and says so), and on this hosted instance up to roughly <strong>2,500 rows across 16 channels</strong>.
+    Measured 2026-08-26: 2,000&nbsp;&times;&nbsp;16 completes; 4,000&nbsp;&times;&nbsp;16 and a
+    17,518-row file both hit the 180-second engine limit and come back as an error. If your record is
+    longer, send a slice &mdash; the engine reads sequence, so send <em>consecutive</em> rows, not a
+    random sample.
   </p>
   <p style="font-family:sans-serif;font-size:.9rem;">Trading or quant team? Use the <a href="/shop/compute.html">compute version</a> instead.</p>
-  <p style="font-size:.9rem;"><a href="/shop/example-report.html">See a worked example report</a> (quantum-control example, regenerated from the public QDataSet simulation code, Perrier et al. 2021).</p>
+  <p style="font-size:.9rem;color:var(--ink-soft);">
+    Trouble uploading, or the file is too big? Email it to
+    <a href="mailto:jjj101147@gmail.com?subject=Data%20for%20analysis">jjj101147@gmail.com</a>.
+    That address is read by a person, and it is the same address your
+    receipt comes from &mdash; so replying to the receipt reaches him too.
+  </p>
   <footer style="border-top:1px solid var(--rule);padding-top:1rem;font-size:.8rem;color:var(--ink-soft);font-family:sans-serif;">
     LATTICE24 · James Jardine · ORCID 0009-0004-9073-7192 · <a href="/">lattice24.com</a>
   </footer>
@@ -73,12 +103,25 @@ document.getElementById('go').onclick = async () => {
   if (!f) { msg.textContent = 'Pick a CSV first.'; return; }
   if (f.size > 5_000_000) { msg.textContent = 'File too large (5 MB max). Send the last few thousand rows.'; return; }
   const csv = await f.text();
+  // Say it here, before a three-minute wait ends in a refusal. The server
+  // enforces the same ceiling (SHOP_MAX_ROWS) -- this only saves the upload.
+  const rows = csv.split(/\r?\n/).filter(l => l.trim()).length - 1;
+  if (rows > 2500) {
+    msg.textContent = 'That file has ' + rows.toLocaleString() + ' rows. This hosted '
+      + 'instance finishes about 2,500 before it hits its 180-second limit. Send a '
+      + 'slice of at most 2,500 consecutive rows — the engine reads sequence, so a '
+      + 'random sample is not the same file.';
+    return;
+  }
   document.getElementById('go').disabled = true;
   msg.textContent = 'Running the engine… this takes up to three minutes.';
   try {
     const r = await fetch('/api/run', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ csv, email: document.getElementById('e').value,
+                             notes_client: document.getElementById('n').value,
+                             notes_internal: document.getElementById('ni').value,
+                             client: document.getElementById('cl').value,
                              label_col: document.getElementById('l').value,
                              group_col: document.getElementById('g').value })});
     const j = await r.json();
