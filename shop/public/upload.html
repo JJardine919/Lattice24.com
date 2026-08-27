@@ -79,13 +79,16 @@
   </p>
   <p style="font-size:.9rem;color:var(--ink-soft);">
     <strong>Size that actually works here:</strong> at least 200 rows &mdash; below that the
-    engine refuses, and says so &mdash; and <strong>no upper limit</strong>. Your file is
-    collected here and run on a machine that can finish it, so the size of this server is not
-    your problem any more. An earlier version of this page promised 2,500 rows; that number was
-    scaled from a laptop timing rather than measured, and it was wrong. What this server was
-    actually measured at on 2026-08-26: 600 rows in about 110 seconds, and 2,400 rows and above
-    hitting its 180-second limit and coming back as an error. Send the whole record &mdash; and
-    send <em>consecutive</em> rows, not a random sample, because the engine reads sequence.
+    engine refuses, and says so &mdash; and <strong>no upper limit</strong>, up to the 5&nbsp;MB
+    cap above. Your file is collected here and run on a machine that can finish it, so the size
+    of this server stopped being your problem. For the record, what this server itself was
+    measured at on 2026-08-26: about 65&nbsp;seconds of engine time for 600 rows, ~90&nbsp;s for
+    900 and ~118&nbsp;s for 1,200, with 2,400 rows and above hitting its 180-second limit. An
+    earlier version of this page promised 2,500 rows, scaled from a laptop timing rather than
+    measured; a later one quoted 110&nbsp;s for 600 rows, which was the whole request including
+    45&nbsp;seconds of a supplementary screen that timed out doing nothing. Send
+    <em>consecutive</em> rows &mdash; the engine reads sequence, so a random sample is a
+    different file.
   </p>
   <p style="font-family:sans-serif;font-size:.9rem;">Trading or quant team? Use the <a href="/shop/compute.html">compute version</a> instead.</p>
   <p style="font-size:.9rem;color:var(--ink-soft);">
@@ -105,16 +108,13 @@ document.getElementById('go').onclick = async () => {
   if (!f) { msg.textContent = 'Pick a CSV first.'; return; }
   if (f.size > 5_000_000) { msg.textContent = 'File too large (5 MB max). Send the last few thousand rows.'; return; }
   const csv = await f.text();
-  // Say it here, before a three-minute wait ends in a refusal. The server
-  // enforces the same ceiling (SHOP_MAX_ROWS) -- this only saves the upload.
-  const rows = csv.split(/\r?\n/).filter(l => l.trim()).length - 1;
-  if (rows > 600) {
-    msg.textContent = 'That file has ' + rows.toLocaleString() + ' rows. This hosted '
-      + 'server collects your file and runs it elsewhere, so send the '
-      + 'slice of at most 600 consecutive rows — the engine reads sequence, so a '
-      + 'random sample is not the same file.';
-    return;
-  }
+  // No row check. This page used to refuse at 601 rows while its own prose two
+  // paragraphs up said "no upper limit -- send the whole record", so a customer
+  // who did what he was told was blocked by the page that told him. In collect
+  // mode the server does not enforce a row ceiling either -- server.py gates it
+  // behind `and not COLLECT_ONLY` -- so the check was guarding a limit that was
+  // not there, with a message that was not true. The 5 MB body cap above is the
+  // only real limit and it is checked already.
   document.getElementById('go').disabled = true;
   msg.textContent = 'Running the engine… this takes up to three minutes.';
   try {

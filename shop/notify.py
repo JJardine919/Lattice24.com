@@ -184,8 +184,23 @@ def _credentials():
     pw = os.environ.get("LATTICE24_GMAIL_APP_PASSWORD")
     if pw:
         return (os.environ.get("LATTICE24_GMAIL_USER", ""), pw)
+    # The laptop fallback, guarded. Unguarded, this `import mailbox` resolved to
+    # PYTHON'S STDLIB mailbox inside the container -- the inserted path does not
+    # exist there, so nothing shadows it -- and the operator saw
+    # "module 'mailbox' has no attribute 'load_credentials'", which names the
+    # wrong cause. That is the same class of defect as the "check row ordering"
+    # page: a true-sounding message pointing at something that is not broken.
+    # Say what is actually wrong instead.
     import sys
-    sys.path.insert(0, "/home/voodoo/lattice24_pipeline")
+    pipeline = "/home/voodoo/lattice24_pipeline"
+    if not os.path.isfile(os.path.join(pipeline, "mailbox.py")):
+        raise RuntimeError(
+            "no mail credentials: set LATTICE24_GMAIL_USER and "
+            "LATTICE24_GMAIL_APP_PASSWORD in this deployment's environment. "
+            f"(The laptop fallback needs {pipeline}/mailbox.py, which is not "
+            "present here -- this is a deployment that has never been given "
+            "credentials, not a broken import.)")
+    sys.path.insert(0, pipeline)
     import mailbox as mailbox_mod
     return mailbox_mod.load_credentials()
 
