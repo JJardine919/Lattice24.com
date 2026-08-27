@@ -615,8 +615,8 @@ class Handler(BaseHTTPRequestHandler):
             # the right answer. Serve the branch message the collect path
             # already wrote -- "we have your file", or, if the mail out failed,
             # a plain statement that it did not arrive and where to send it.
-            if m.get("branch") in ("COLLECTED", "COLLECT_FAILED"):
-                got = m["branch"] == "COLLECTED"
+            if m.get("branch") in ("COLLECTED", "COLLECTED_HELD", "COLLECT_FAILED"):
+                got = m["branch"] in ("COLLECTED", "COLLECTED_HELD")
                 body = m.get("triage_message", "")
                 # Strip the leading markdown heading; the page has a title.
                 lines = [ln for ln in body.splitlines() if not ln.startswith("# ")]
@@ -963,12 +963,35 @@ class Handler(BaseHTTPRequestHandler):
                 (job_dir(job) / "upload.csv").write_text(csv)
             except Exception as exc:  # noqa: BLE001 -- still try to mail it
                 print(f"COLLECT: could not persist {job}: {exc}", flush=True)
+            # Do not attempt SMTP from this container. Measured on the live
+            # instance 2026-08-27 by /api/netcheck, with valid credentials set:
+            # smtp.gmail.com:465 and :587 both [Errno 101] Network is
+            # unreachable, while HTTPS to three hosts returned 200 in under a
+            # quarter second. Render's free tier blocks outbound mail.
+            #
+            # The attempt was not merely futile, it was the whole wait: three
+            # tries at a 60 s socket timeout made a 300-row upload take 181 s,
+            # and the customer sat through all of it to be told the mail had
+            # failed. Skipping it makes the same upload answer in under a
+            # second. SHOP_TRY_SMTP=1 restores the attempt for a host that can
+            # actually send.
             sent = False
-            try:
-                sent = notify.mail_upload_to_jim(job, csv, meta)
-            except Exception as exc:  # noqa: BLE001 -- never lose the answer
-                print(f"COLLECT: handler raised for {job}: {exc}", flush=True)
-            meta["branch"] = "COLLECTED" if sent else "COLLECT_FAILED"
+            if os.environ.get("SHOP_TRY_SMTP", "") == "1":
+                try:
+                    sent = notify.mail_upload_to_jim(job, csv, meta)
+                except Exception as exc:  # noqa: BLE001 -- never lose the answer
+                    print(f"COLLECT: handler raised for {job}: {exc}", flush=True)
+            else:
+                print(f"COLLECT: {job} held for pull (outbound SMTP is blocked "
+                      f"on this host; see /api/netcheck)", flush=True)
+            # Three states, not two. "COLLECT_FAILED" means we do not have the
+            # file; it must never be shown for a file we are holding on purpose.
+            if sent:
+                meta["branch"] = "COLLECTED"
+            elif (job_dir(job) / "upload.csv").exists():
+                meta["branch"] = "COLLECTED_HELD"
+            else:
+                meta["branch"] = "COLLECT_FAILED"
             meta["done"], meta["ok"] = True, False
             meta["err"] = ""
             if sent:
@@ -981,15 +1004,29 @@ class Handler(BaseHTTPRequestHandler):
                     "\"nothing here\" if that is the honest answer.\n\n"
                     "No account, no charge, no call unless you ask for one.\n"
                 )
+            elif meta["branch"] == "COLLECTED_HELD":
+                msg = (
+                    "# We have your file\n\n"
+                    f"{max(0, len([l for l in csv.splitlines() if l.strip()]) - 1):,} "
+                    "rows received and saved.\n\n"
+                    "A person reads it and comes back to you with what moved, "
+                    "what it costs, and what it cannot support -- including "
+                    "\"nothing here\" if that is the honest answer.\n\n"
+                    "To be exact about the timing: this server cannot send mail "
+                    "out, so it is not emailing anyone the moment you press the "
+                    "button. Jim's own machine collects new files from here and "
+                    "that is what reaches him. If you would rather not wait on "
+                    "that, email the file to jjj101147@gmail.com and it lands "
+                    "with him directly.\n\n"
+                    "No account, no charge, no call unless you ask for one.\n"
+                )
             else:
                 msg = (
                     "# Your file did not reach us\n\n"
-                    "Our mail is failing right now, so nobody has been "
-                    "notified yet. We would rather say so than let you think "
-                    "it arrived.\n\n"
-                    "Your file IS saved and this page keeps working -- send "
-                    "Jim this link and he can pick it up from here. Or email "
-                    "the file to jjj101147@gmail.com.\n"
+                    "It could not be saved on our side, so we do not have it. "
+                    "We would rather say so than let you think it arrived.\n\n"
+                    "Please email the file to jjj101147@gmail.com and it will "
+                    "be picked up directly.\n"
                 )
             meta["triage_message"] = msg
             (job_dir(job) / "report.md").write_text(msg)
