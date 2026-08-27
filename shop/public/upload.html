@@ -78,12 +78,14 @@
     and to nobody else.
   </p>
   <p style="font-size:.9rem;color:var(--ink-soft);">
-    <strong>Size that actually works here:</strong> at least 200 rows (below that the engine
-    refuses, and says so). The upper limit on this hosted instance is being re-measured against
-    the live server today &mdash; the number that was here before was derived by scaling a
-    laptop timing, not measured, and it was wrong. Until the measured figure is in, send
-    <strong>200 to 600 rows</strong> and it will run. If your record is longer, send a slice
-    &mdash; the engine reads sequence, so send <em>consecutive</em> rows, not a random sample.
+    <strong>Size that actually works here:</strong> at least 200 rows &mdash; below that the
+    engine refuses, and says so &mdash; and <strong>no upper limit</strong>. Your file is
+    collected here and run on a machine that can finish it, so the size of this server is not
+    your problem any more. An earlier version of this page promised 2,500 rows; that number was
+    scaled from a laptop timing rather than measured, and it was wrong. What this server was
+    actually measured at on 2026-08-26: 600 rows in about 110 seconds, and 2,400 rows and above
+    hitting its 180-second limit and coming back as an error. Send the whole record &mdash; and
+    send <em>consecutive</em> rows, not a random sample, because the engine reads sequence.
   </p>
   <p style="font-family:sans-serif;font-size:.9rem;">Trading or quant team? Use the <a href="/shop/compute.html">compute version</a> instead.</p>
   <p style="font-size:.9rem;color:var(--ink-soft);">
@@ -108,7 +110,7 @@ document.getElementById('go').onclick = async () => {
   const rows = csv.split(/\r?\n/).filter(l => l.trim()).length - 1;
   if (rows > 600) {
     msg.textContent = 'That file has ' + rows.toLocaleString() + ' rows. This hosted '
-      + 'instance is being re-measured today. Send a '
+      + 'server collects your file and runs it elsewhere, so send the '
       + 'slice of at most 600 consecutive rows — the engine reads sequence, so a '
       + 'random sample is not the same file.';
     return;

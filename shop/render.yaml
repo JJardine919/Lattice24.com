@@ -37,7 +37,7 @@ services:
         value: "1"
 
       - key: SHOP_MAX_ROWS
-        value: "20000"
+        value: "600"
 
       # TEMPORARY, 2026-08-26. Raised from its default of 6 so the row ceiling
       # can be binary-searched against this host inside one session -- four runs
@@ -46,7 +46,7 @@ services:
       # the measurement report is written. If you are reading this line on a
       # later date, it was left open by mistake: remove it.
       - key: SHOP_RUN_PER_IP_HOUR
-        value: "40"
+        value: "6"
 
       # Wall-clock the order-invariance annex may take. It is fixed-cost work
       # (16 channels x 3 windows, ~6.3 s on the laptop) that used to run under
@@ -54,7 +54,7 @@ services:
       # None of its controls were shortened; it either fits or the report says
       # plainly that it was not run.
       - key: SHOP_ANNEX_SECS
-        value: "45"
+        value: "0"
 
       # Throttles on the unauthenticated upload endpoint.
       - key: SHOP_RATE_PER_IP_HOUR
