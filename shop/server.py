@@ -839,6 +839,22 @@ class Handler(BaseHTTPRequestHandler):
             # disk is not storage -- the mail is. If the mail fails the
             # customer is told plainly that it failed, never that we have
             # their file when we do not.
+            # Write the file to disk BEFORE trying to mail it.
+            #
+            # Until 2026-08-26 this block held the only copy of a customer's
+            # CSV in a local variable: run_engine writes csvp, collect mode
+            # bypasses run_engine, and meta.json persists "csv": None. So when
+            # SMTP returned 550 the upload was not delayed, it was DESTROYED --
+            # and the customer was told to re-send it to an address that was
+            # itself throttled.
+            #
+            # Render's free tier wipes on spin-down after idle, not instantly,
+            # so a job on disk has a real retry window. Disk-then-mail turns an
+            # unrecoverable loss into a recoverable one.
+            try:
+                (job_dir(job) / "upload.csv").write_text(csv)
+            except Exception as exc:  # noqa: BLE001 -- still try to mail it
+                print(f"COLLECT: could not persist {job}: {exc}", flush=True)
             sent = False
             try:
                 sent = notify.mail_upload_to_jim(job, csv, meta)
@@ -860,10 +876,12 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 msg = (
                     "# Your file did not reach us\n\n"
-                    "Something on our side failed while receiving it, and we "
-                    "would rather say so than let you think it arrived.\n\n"
-                    "Please email the file to jjj101147@gmail.com and it will "
-                    "be picked up directly.\n"
+                    "Our mail is failing right now, so nobody has been "
+                    "notified yet. We would rather say so than let you think "
+                    "it arrived.\n\n"
+                    "Your file IS saved and this page keeps working -- send "
+                    "Jim this link and he can pick it up from here. Or email "
+                    "the file to jjj101147@gmail.com.\n"
                 )
             meta["triage_message"] = msg
             (job_dir(job) / "report.md").write_text(msg)

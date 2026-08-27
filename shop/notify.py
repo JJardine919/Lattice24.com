@@ -353,11 +353,54 @@ def receipt(job, meta):
         return None
 
 
+
+def _self_send_budget(kind, cap_env, default):
+    """Shared daily ceiling for the direct-SMTP paths that never reach mail_gate.
+
+    mail_gate has SELF_SEND_CAP, but neither alert_jim nor mail_upload_to_jim
+    goes through mail_gate -- they call _smtp_send directly. Capping the gate
+    on 2026-08-26 therefore fixed nothing: alert_jim stayed uncapped and
+    delivery_log.jsonl recorded 270 alerts that day, inside the 549 sends that
+    tripped Gmail's 500/day limit and took the account offline.
+
+    Counts every ATTEMPT, not every success. Counting successes means a failing
+    send never advances the counter and retries are unbounded -- which is the
+    exact state a 550 puts this in.
+
+    Returns (ok, n, cap). The counter file lives on the container's ephemeral
+    disk, so it resets on a cold start: this is a brake on a runaway loop
+    inside one uptime, not an accounting record.
+    """
+    cap = int(os.environ.get(cap_env, str(default)))
+    stamp = time.strftime("%Y-%m-%d")
+    path = Path(os.environ.get("SHOP_SELF_SEND_COUNTER",
+                               "/tmp/lattice24_self_send")).with_suffix(f".{kind}")
+    n = 0
+    try:
+        day, got = path.read_text().split(None, 1)
+        if day == stamp:
+            n = int(got)
+    except Exception:  # noqa: BLE001 - no counter yet is n=0
+        pass
+    if n >= cap:
+        return False, n, cap
+    try:
+        path.write_text(f"{stamp} {n + 1}")
+    except Exception as exc:  # noqa: BLE001 - bookkeeping must not block the send
+        print(f"self-send counter not written: {exc}", flush=True)
+    return True, n + 1, cap
+
+
 def alert_jim(job, meta, client_ip="unknown"):
     """Message 2 -- Jim, immediately. A stranger uploaded a file."""
+    ok, n, cap = _self_send_budget("alert", "SHOP_ALERT_DAILY_CAP", 80)
+    if not ok:
+        print(f"ALERT: daily cap of {cap} reached — job {job} NOT alerted. "
+              f"The upload is still on disk and on its report page.", flush=True)
+        return None
     f = file_facts(meta)
     who = meta.get("email") or "(no address given)"
-    subject = f"[SHOP] upload from {who} — job {job}"
+    subject = f"[SHOP] upload from {who} — job {job} ({n}/{cap} today)"
     body = (
         "Someone uploaded a file to the shop.\n\n"
         f"  from     : {who}\n"
@@ -539,20 +582,11 @@ def mail_upload_to_jim(job, csv_text, meta=None):
     # one mailed an alert. 549 messages left the account that day and Gmail
     # refused everything past 500, which then blocked real customer uploads.
     # A test loop must not be able to spend the account's daily quota again.
-    cap = int(os.environ.get("SHOP_COLLECT_DAILY_CAP", "100"))
-    stamp = time.strftime("%Y-%m-%d")
-    counter = Path(os.environ.get("SHOP_COLLECT_COUNTER",
-                                  "/tmp/lattice24_collect_count"))
-    n = 0
-    try:
-        day, got = counter.read_text().split(None, 1)
-        if day == stamp:
-            n = int(got)
-    except Exception:  # noqa: BLE001 - no counter yet is n=0
-        pass
-    if n >= cap:
+    ok, n, cap = _self_send_budget("collect", "SHOP_COLLECT_DAILY_CAP", 100)
+    if not ok:
         print(f"COLLECT: daily cap of {cap} reached — upload {job} NOT mailed. "
-              f"Raise SHOP_COLLECT_DAILY_CAP or clear {counter}.", flush=True)
+              f"The file is on disk and its report page still serves.",
+              flush=True)
         return False
 
     try:
@@ -593,12 +627,8 @@ def mail_upload_to_jim(job, csv_text, meta=None):
         with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=60) as smtp:
             smtp.login(user, password)
             smtp.send_message(em)
-        try:
-            counter.write_text(f"{stamp} {n + 1}")
-        except Exception as exc:  # noqa: BLE001 - the mail went, do not fail on bookkeeping
-            print(f"COLLECT: counter not written: {exc}", flush=True)
         print(f"COLLECT: upload {job} mailed to {JIM_ADDRESS} "
-              f"({rows:,} rows, {n + 1}/{cap} today)", flush=True)
+              f"({rows:,} rows, {n}/{cap} today)", flush=True)
         return True
     except Exception as exc:                     # noqa: BLE001
         print(f"COLLECT: SMTP FAILED for upload {job}: {exc}", flush=True)
