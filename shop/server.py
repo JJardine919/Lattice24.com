@@ -97,6 +97,79 @@ MAX_ROWS = int(os.environ.get("SHOP_MAX_ROWS", "600"))
 #: ceiling, and is what the customer is actually promised: a read back from a
 #: person. The engine then runs on a machine that can finish it.
 COLLECT_ONLY = os.environ.get("SHOP_COLLECT_ONLY", "1") != "0"
+
+#: Shared secret for the pull endpoints. UNSET = the endpoints do not exist.
+#:
+#: They serve customers' uploaded CSVs, so the default has to be off: a typo in
+#: a deploy must not publish other people's data. With no key set, /api/pull
+#: 404s exactly like any unknown path and gives away nothing about itself.
+PULL_KEY = os.environ.get("SHOP_PULL_KEY", "")
+
+
+def _netcheck():
+    """Can this container reach the outside world, and on what?
+
+    Outbound SMTP is blocked here; whether 443 is open decides whether the
+    container can ever push anything itself. The build reaching PyPI does not
+    answer it -- that is the build network, not the runtime network -- so this
+    asks at runtime and reports what it got.
+    """
+    out = {}
+    for name, url in (("https_pypi", "https://pypi.org/simple/"),
+                      ("https_github", "https://api.github.com/"),
+                      ("https_google", "https://www.google.com/")):
+        t0 = time.time()
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "lattice24-netcheck"})
+            with urllib.request.urlopen(req, timeout=15) as r:
+                out[name] = {"ok": True, "status": r.status,
+                             "secs": round(time.time() - t0, 2)}
+        except Exception as exc:  # noqa: BLE001 -- the failure IS the result
+            out[name] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"[:180],
+                         "secs": round(time.time() - t0, 2)}
+    for name, host, port in (("smtp_gmail_465", "smtp.gmail.com", 465),
+                             ("smtp_gmail_587", "smtp.gmail.com", 587)):
+        import socket
+        t0 = time.time()
+        try:
+            socket.create_connection((host, port), timeout=15).close()
+            out[name] = {"ok": True, "secs": round(time.time() - t0, 2)}
+        except Exception as exc:  # noqa: BLE001
+            out[name] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"[:180],
+                         "secs": round(time.time() - t0, 2)}
+    return out
+
+
+def _pull_authorised(query):
+    """Constant-time key check. False whenever no key is configured."""
+    if not PULL_KEY:
+        return False
+    supplied = urllib.parse.parse_qs(query or "").get("key", [""])[0]
+    return hmac.compare_digest(supplied, PULL_KEY)
+
+
+def _pending_uploads():
+    """Every collected upload still waiting to be fetched, oldest first."""
+    out = []
+    for d in sorted(JOBS.glob("*")):
+        f = d / "upload.csv"
+        if not f.is_dir() and f.exists() and not (d / "FETCHED").exists():
+            try:
+                m = json.loads((d / "meta.json").read_text())
+            except Exception:  # noqa: BLE001 -- a job mid-write is not an error
+                m = {}
+            out.append({
+                "job": d.name,
+                "bytes": f.stat().st_size,
+                "submitted": m.get("submit_time", ""),
+                "email": m.get("email", ""),
+                "client": m.get("client", ""),
+                "notes_client": m.get("notes_client", ""),
+                "notes_internal": m.get("notes_internal", ""),
+                "branch": m.get("branch", ""),
+            })
+    out.sort(key=lambda r: r["submitted"])
+    return out
 TEASER_LINES = 45
 STRIPE_SK   = os.environ.get("STRIPE_SECRET_KEY", "")
 PRICE_ID    = os.environ.get("STRIPE_PRICE_ID", "")
@@ -475,6 +548,41 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         p = self.path.split("?")[0]
+        q = self.path.split("?", 1)[1] if "?" in self.path else ""
+
+        # --- pull endpoints -------------------------------------------------
+        # Render's free tier blocks outbound SMTP (measured 2026-08-27:
+        # [Errno 101] Network is unreachable, with valid credentials), so this
+        # container cannot push a customer's file anywhere. These let Jim's
+        # machine PULL instead, which needs nothing outbound from here.
+        if p == "/api/netcheck":
+            if not _pull_authorised(q):
+                return self._send(404, _page_html("404", ""))
+            return self._send(200, json.dumps(_netcheck(), indent=2),
+                              "application/json")
+        if p == "/api/pull":
+            if not _pull_authorised(q):
+                return self._send(404, _page_html("404", ""))
+            return self._send(200, json.dumps(_pending_uploads(), indent=2),
+                              "application/json")
+        if p.startswith("/api/pull/"):
+            if not _pull_authorised(q):
+                return self._send(404, _page_html("404", ""))
+            parts = p.strip("/").split("/")
+            job = parts[2] if len(parts) > 2 else ""
+            if not job.isalnum():          # job ids are uuid4().hex[:16]
+                return self._send(400, '{"err":"bad job id"}', "application/json")
+            f = job_dir(job) / "upload.csv"
+            if not f.exists():
+                return self._send(404, '{"err":"no such upload"}', "application/json")
+            if len(parts) == 4 and parts[3] == "ack":
+                # Marked only once the fetcher says it has the bytes, so a
+                # failed download is retried rather than silently dropped.
+                (job_dir(job) / "FETCHED").write_text(
+                    time.strftime("%Y-%m-%dT%H:%M:%S") + "\n")
+                return self._send(200, '{"ok":true}', "application/json")
+            return self._send(200, f.read_bytes(), "text/csv")
+
         if p.startswith("/shop/") and p.endswith(".html"):
             name = Path(p).name
             f = STATIC / name
