@@ -59,18 +59,35 @@ ENGINE_SECS = 180
 #: failed, which reads as a broken product; this tells him in one second, with
 #: the limit and his own row count in the message, so the next thing he does is
 #: send a slice rather than give up.
-# MEASUREMENT WINDOW, 2026-08-26 -- temporary, replaced by the measured value
-# in the follow-up commit.
+# MEASURED against the live host, 2026-08-26. Not scaled from a laptop timing:
+# that is how the 2,500 that was here before got here, and it was wrong.
 #
-# render.yaml is INERT for this service. It declares SHOP_MAX_ROWS and the
-# throttles, but Render only reads envVars from a blueprint at service
-# creation; for a service wired up in the dashboard the file is documentation,
-# not configuration. Proven live: render.yaml said 600, then 20000, and the
-# host went on answering `"max_rows": 2500` -- which is this line's default,
-# i.e. nothing is set anywhere and the CODE DEFAULT is what runs. So the code
-# default is the only lever a push controls, and it is where the measured
-# ceiling has to go.
-MAX_ROWS = int(os.environ.get("SHOP_MAX_ROWS", "20000"))
+# Binary search against https://lattice24-com.onrender.com, warm instance, the
+# 16-channel refinery file truncated, total request time and whether the report
+# was actually served:
+#
+#      600 rows  111.8 s  report served
+#      600 rows  109.7 s  report served
+#      900 rows  135.3 s  report served
+#    1,200 rows  164.6 s  report served
+#    2,400 rows  181.9 s  ENGINE TIMEOUT AFTER 180 s
+#    4,000 rows  181.9 s  ENGINE TIMEOUT
+#    8,000 rows  184.8 s  ENGINE TIMEOUT
+#   17,518 rows  252.3 / 213.0 / 199.2 s  ENGINE TIMEOUT, three for three
+#
+# 600 is the largest value with more than one clean repeat behind it, and its
+# worst run leaves the engine at roughly a third of the 180 s it is allowed.
+# 900 and 1,200 each completed ONCE; on a shared free CPU one pass is a lucky
+# draw, not a ceiling, and the third 600-row repeat came back 502 (see below),
+# which is exactly the variance that makes a single pass untrustworthy.
+#
+# render.yaml is INERT for this service: it declares SHOP_MAX_ROWS and the
+# throttles and none of it reaches the container. Render reads a blueprint's
+# envVars at service creation; for a service wired up in the dashboard the file
+# is documentation. Proven live -- the file said 600, then 20000, and the host
+# went on answering "max_rows": 2500, which was this line's own default. The
+# code default is the only lever a push controls.
+MAX_ROWS = int(os.environ.get("SHOP_MAX_ROWS", "600"))
 #: Collect the file instead of running the engine on it.
 #:
 #: Measured 2026-08-26 on the live free instance: a 600-row file took 181 s and
@@ -133,7 +150,14 @@ def job_dir(job): return JOBS / job
 #: budget: if the machine cannot afford it inside that budget it is not run, and
 #: the report SAYS it was not run. A section silently missing would be worse
 #: than a slow one.
-ANNEX_SECS = int(os.environ.get("SHOP_ANNEX_SECS", "45"))
+# Default 0 -- OFF -- because the only deployment running this code cannot
+# afford it. Measured on the live host with a 45 s budget: it timed out on every
+# single job, so every customer waited an extra 45 seconds to be handed a
+# sentence saying it had not run. Off, they get the same sentence immediately.
+# A machine that can afford it sets SHOP_ANNEX_SECS to a real budget; Jim's own
+# CLI runs of analyze.py never appended the annex in the first place, so nothing
+# he does by hand changes.
+ANNEX_SECS = int(os.environ.get("SHOP_ANNEX_SECS", "0"))
 
 
 def _append_annex(csvp, outp, meta):
@@ -323,11 +347,11 @@ _rate_hits = {"ip": {}, "addr": {}}
 #: a failed upload must not meet a 429 before he meets the mail throttle) and
 #: is expressed in requests, not mails, so a caller who leaves the email field
 #: blank is still counted.
-# TEMPORARY, 2026-08-26, for the ceiling measurement only. Six accepted runs
-# is not enough to binary-search a ceiling whose probes take minutes each, and
-# a 429 is not a data point. PUT BACK TO 6 in the same session. If you are
-# reading 40 here on a later date, it was left open by mistake.
-RUN_PER_IP_HOUR = int(os.environ.get("SHOP_RUN_PER_IP_HOUR", "40"))
+# Back to 6, where it was. It was raised to 40 for roughly 35 minutes on
+# 2026-08-26 (commit fcf97f3, 03:00-03:35 UTC) because six accepted runs cannot
+# binary-search a ceiling whose probes take three minutes each, and a 429 is not
+# a data point. That window is closed.
+RUN_PER_IP_HOUR = int(os.environ.get("SHOP_RUN_PER_IP_HOUR", "6"))
 _run_lock = threading.Lock()
 _run_hits = {}
 
@@ -478,6 +502,22 @@ class Handler(BaseHTTPRequestHandler):
                     f"<pre>{html_escape(m['triage_message'])}</pre>"
                     f"<p>Reply to <a href=\"mailto:{notify.REPLY_ADDRESS}\">"
                     f"{notify.REPLY_ADDRESS}</a> and it reaches Jim directly.</p>"))
+            # Collect mode: the engine deliberately did not run, so ok=False
+            # is not a failure and none of the engine-failure pages below are
+            # the right answer. Serve the branch message the collect path
+            # already wrote -- "we have your file", or, if the mail out failed,
+            # a plain statement that it did not arrive and where to send it.
+            if m.get("branch") in ("COLLECTED", "COLLECT_FAILED"):
+                got = m["branch"] == "COLLECTED"
+                body = m.get("triage_message", "")
+                # Strip the leading markdown heading; the page has a title.
+                lines = [ln for ln in body.splitlines() if not ln.startswith("# ")]
+                para = "".join(f"<p>{html_escape(ln.strip())}</p>"
+                               for ln in lines if ln.strip())
+                return self._send(200, _page_html(
+                    "We have your file" if got else "Your file did not reach us",
+                    para + (f"<p>Reach Jim at <a href=\"mailto:{notify.REPLY_ADDRESS}\">"
+                            f"{notify.REPLY_ADDRESS}</a>.</p>")))
             if not m["ok"]:
                 err = m.get("err", "") or ""
                 # An engine TIMEOUT is not a data problem, and the row-ordering
