@@ -103,6 +103,19 @@ COLLECT_ONLY = os.environ.get("SHOP_COLLECT_ONLY", "1") != "0"
 #: They serve customers' uploaded CSVs, so the default has to be off: a typo in
 #: a deploy must not publish other people's data. With no key set, /api/pull
 #: 404s exactly like any unknown path and gives away nothing about itself.
+#: Can this deployment send mail at all?
+#:
+#: Off by default because the deployment this code runs on cannot: /api/netcheck
+#: on the live container returns [Errno 101] Network is unreachable for
+#: smtp.gmail.com on both 465 and 587, with valid credentials set, while HTTPS
+#: to three hosts returns 200 in under a quarter second. Render's free tier
+#: blocks outbound mail.
+#:
+#: Every attempt costs a 60 s socket timeout and the customer waits through all
+#: of them. A host that can send sets SHOP_TRY_SMTP=1 and everything mails as
+#: before.
+MAIL_POSSIBLE = os.environ.get("SHOP_TRY_SMTP", "") == "1"
+
 PULL_KEY = os.environ.get("SHOP_PULL_KEY", "")
 
 
@@ -926,7 +939,13 @@ class Handler(BaseHTTPRequestHandler):
         # customer was told "watch your inbox". They hear back first, then wait.
         # Every notify call swallows nothing -- it logs and raises its own alarm
         # -- so the guard here is only for a failure inside the alarm itself.
+        # MAIL_POSSIBLE is the one place that asks "can this host send at all".
+        # Without it, gating only the collect path left the two intake messages
+        # still trying: notify.alert_jim goes straight to SMTP, and each attempt
+        # burns a 60 s socket timeout, so an upload still took 120 s after the
+        # collect fix took 60 off it. Measured on the live host both ways.
         may_mail, why = rate_ok(client_ip or "unknown", meta.get("email"))
+        may_mail = may_mail and MAIL_POSSIBLE
         meta["may_mail"] = may_mail
         try:
             if may_mail:
@@ -976,7 +995,7 @@ class Handler(BaseHTTPRequestHandler):
             # second. SHOP_TRY_SMTP=1 restores the attempt for a host that can
             # actually send.
             sent = False
-            if os.environ.get("SHOP_TRY_SMTP", "") == "1":
+            if MAIL_POSSIBLE:
                 try:
                     sent = notify.mail_upload_to_jim(job, csv, meta)
                 except Exception as exc:  # noqa: BLE001 -- never lose the answer
@@ -1058,7 +1077,7 @@ class Handler(BaseHTTPRequestHandler):
         # Log to sent.json: file hash + submit time + client IP
         _log_sent(job, meta, client_ip or "unknown")
         try:
-            if meta.get("may_mail"):
+            if meta.get("may_mail") and MAIL_POSSIBLE:
                 notify.outcome(job, meta)
         except Exception as exc:  # noqa: BLE001
             print("NOTIFY PATH FAILED on outcome:", exc, flush=True)
