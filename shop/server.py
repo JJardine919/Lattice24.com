@@ -97,6 +97,65 @@ VERRA_DISCLAIMER = "Verra MINs submitted 28-31 July 2026, NOT approved, determin
 def job_dir(job): return JOBS / job
 
 
+#: Wall-clock the order-invariance annex is allowed, in seconds.
+#:
+#: The annex used to run INSIDE run_engine as a plain function call, after the
+#: subprocess timeout had already been satisfied -- so it was the one part of a
+#: job under no time limit at all. Measured 2026-08-26 on the laptop it costs
+#: 6.3 s and does NOT vary with row count (200/400/600/1200 rows: 8.33/8.38/
+#: 8.33/8.51 s before the surrogate work, 6.34 s after). It is 16 channels x 3
+#: fixed windows, so it is pure fixed cost. On the live free instance, which
+#: measures ~24x slower than this laptop, that is ~150 s on top of the engine --
+#: and it was the larger half of an observed 235 s request.
+#:
+#: NOTHING IS CUT FROM THE ANNEX ITSELF. Its surrogate counts are controls and
+#: they are untouched. What changes is that it now runs as a subprocess with a
+#: budget: if the machine cannot afford it inside that budget it is not run, and
+#: the report SAYS it was not run. A section silently missing would be worse
+#: than a slow one.
+ANNEX_SECS = int(os.environ.get("SHOP_ANNEX_SECS", "45"))
+
+
+def _append_annex(csvp, outp, meta):
+    """Run the annex under a wall-clock budget; say so if it did not fit."""
+    if ANNEX_SECS <= 0:
+        with open(outp, "a") as fh:
+            fh.write("\n## Order-invariance annex (collapse engine)\n\n"
+                     "Not run: this deployment has the annex switched off "
+                     "(SHOP_ANNEX_SECS=0). Ask and it will be run on the full "
+                     "record off-line.\n")
+        meta["annex"] = "off"
+        return
+    started = time.time()
+    try:
+        r = subprocess.run(
+            ["python3", "-c",
+             "import sys;sys.path.insert(0,sys.argv[1]);import annex_arms;"
+             "sys.stdout.write(annex_arms.annex(sys.argv[2]))",
+             str(ROOT), str(csvp)],
+            capture_output=True, text=True, timeout=ANNEX_SECS)
+        text, took = r.stdout, time.time() - started
+        if not text.strip():
+            raise RuntimeError((r.stderr or "no output")[-300:])
+        meta["annex"] = f"ran in {took:.1f}s"
+    except subprocess.TimeoutExpired:
+        text = ("\n## Order-invariance annex (collapse engine)\n\n"
+                f"**Not run — it did not fit in the {ANNEX_SECS}s this deployment "
+                "allows it.** This section is an extra screen on top of the report "
+                "above; nothing in the report depends on it, and none of its "
+                "controls were shortened to make it fit. It is fixed-cost work "
+                "(16 channels x 3 windows) and this instance is small. Ask and it "
+                "will be run on your full record off-line.\n")
+        meta["annex"] = f"timeout after {ANNEX_SECS}s"
+    except Exception as exc:  # noqa: BLE001
+        text = ("\n## Order-invariance annex (collapse engine)\n\n"
+                f"**Not run — it failed.** Verbatim: `{exc}`. Nothing in the "
+                "report above depends on this section.\n")
+        meta["annex"] = f"failed: {exc}"
+    with open(outp, "a") as fh:
+        fh.write(text)
+
+
 def run_engine(job, meta):
     d = job_dir(job)
     csvp, outp = d / "input.csv", d / "report.md"
@@ -112,9 +171,7 @@ def run_engine(job, meta):
         meta["done"], meta["ok"] = True, bool(ok)
         meta["err"] = "" if ok else (r.stderr or r.stdout)[-800:]
         if ok:
-            import annex_arms
-            with open(outp, "a") as fh:
-                fh.write(annex_arms.annex(str(csvp)))
+            _append_annex(csvp, outp, meta)
     except subprocess.TimeoutExpired:
         meta.update(done=True, ok=False, err=f"engine timeout after {ENGINE_SECS}s")
     (d / "meta.json").write_text(json.dumps({**meta, "csv": None}))

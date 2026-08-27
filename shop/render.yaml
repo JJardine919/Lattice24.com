@@ -26,8 +26,11 @@ services:
       # the true ceiling is LOWER, not inside the old 2,000-3,900 bracket.
       # Binary-search it against the live 180 s limit after deploy and set it
       # here. Until then the customer-facing page states no ceiling.
+      # TEMPORARY, this session only: raised so the ceiling can actually be
+      # binary-searched. The measured value is set in the follow-up commit and
+      # this comment goes with it.
       - key: SHOP_MAX_ROWS
-        value: "600"
+        value: "20000"
 
       # TEMPORARY, 2026-08-26. Raised from its default of 6 so the row ceiling
       # can be binary-searched against this host inside one session -- four runs
@@ -37,6 +40,14 @@ services:
       # later date, it was left open by mistake: remove it.
       - key: SHOP_RUN_PER_IP_HOUR
         value: "40"
+
+      # Wall-clock the order-invariance annex may take. It is fixed-cost work
+      # (16 channels x 3 windows, ~6.3 s on the laptop) that used to run under
+      # no timeout at all and was the larger half of an observed 235 s request.
+      # None of its controls were shortened; it either fits or the report says
+      # plainly that it was not run.
+      - key: SHOP_ANNEX_SECS
+        value: "45"
 
       # Throttles on the unauthenticated upload endpoint.
       - key: SHOP_RATE_PER_IP_HOUR

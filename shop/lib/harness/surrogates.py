@@ -132,14 +132,38 @@ def ordinal_patterns(x: Sequence[float], order: int, delay: int = 1) -> list[tup
             for i in range(m)]
 
 
+def _pattern_keys(x, order, delay):
+    """The same ordinal patterns as ordinal_patterns(), as one integer each.
+
+    SPEED ONLY -- nothing statistical changes. ordinal_patterns() builds a
+    Python list of tuples with one np.argsort call per position, and
+    perm_entropy() then counted them with list.count() once per DISTINCT
+    pattern, which is quadratic in the window. Profiled 2026-08-26: those two
+    functions were 4.2 s of annex_arms' 14.4 s and 5.1 s of the order screen's
+    5.6 s. The window slices are formed as one (m, order) array and argsorted
+    along the last axis with the same stable kind, so the patterns are
+    identical; they are then keyed to an integer so counting is a bincount.
+    """
+    v = np.asarray(x, dtype=float)
+    m = v.size - (order - 1) * delay
+    if m < 1:
+        return None, 0
+    idx = np.arange(m)[:, None] + np.arange(order)[None, :] * delay
+    pat = np.argsort(v[idx], axis=1, kind="stable")
+    key = np.zeros(m, dtype=np.int64)
+    for j in range(order):
+        key = key * order + pat[:, j]
+    return key, m
+
+
 def perm_entropy(x: Sequence[float], order: int = 3, delay: int = 1,
                  normalise: bool = True) -> float:
     """Normalised permutation entropy in [0, 1]. 0 = one pattern only."""
-    pats = ordinal_patterns(x, order, delay)
-    if not pats:
+    key, m = _pattern_keys(x, order, delay)
+    if key is None:
         return float("nan")
-    counts = np.array(list({p: pats.count(p) for p in set(pats)}.values()),
-                      dtype=float)
+    counts = np.bincount(key)
+    counts = counts[counts > 0].astype(float)
     p = counts / counts.sum()
     h = float(-np.sum(p * np.log(p)))
     return h / math.log(math.factorial(order)) if normalise else h
@@ -147,7 +171,10 @@ def perm_entropy(x: Sequence[float], order: int = 3, delay: int = 1,
 
 def n_distinct_patterns(x: Sequence[float], order: int = 3,
                         delay: int = 1) -> int:
-    return len(set(ordinal_patterns(x, order, delay)))
+    key, m = _pattern_keys(x, order, delay)
+    if key is None:
+        return 0
+    return int(np.count_nonzero(np.bincount(key)))
 
 
 def pe_is_degenerate(x: Sequence[float], order: int = 3, delay: int = 1) -> bool:
