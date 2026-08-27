@@ -1,1 +1,9 @@
 numpy==2.2.6
+# qiskit + aer are NOT optional. lib/brainrow_fixed.py imports AerSimulator at
+# module scope, so analyze.py fails to import without them and every job dies
+# with "Could not read it". Added by commit 43b3d98 on 2026-08-24 for exactly
+# this reason; the 2026-08-26 push dropped them and broke the live engine for
+# ~10 minutes. The laptop has them installed system-wide, which is why local
+# boot tests pass without them listed.
+qiskit==1.2.4
+qiskit-aer==0.15.1
