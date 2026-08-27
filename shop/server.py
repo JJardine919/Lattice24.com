@@ -59,7 +59,18 @@ ENGINE_SECS = 180
 #: failed, which reads as a broken product; this tells him in one second, with
 #: the limit and his own row count in the message, so the next thing he does is
 #: send a slice rather than give up.
-MAX_ROWS = int(os.environ.get("SHOP_MAX_ROWS", "2500"))
+# MEASUREMENT WINDOW, 2026-08-26 -- temporary, replaced by the measured value
+# in the follow-up commit.
+#
+# render.yaml is INERT for this service. It declares SHOP_MAX_ROWS and the
+# throttles, but Render only reads envVars from a blueprint at service
+# creation; for a service wired up in the dashboard the file is documentation,
+# not configuration. Proven live: render.yaml said 600, then 20000, and the
+# host went on answering `"max_rows": 2500` -- which is this line's default,
+# i.e. nothing is set anywhere and the CODE DEFAULT is what runs. So the code
+# default is the only lever a push controls, and it is where the measured
+# ceiling has to go.
+MAX_ROWS = int(os.environ.get("SHOP_MAX_ROWS", "20000"))
 TEASER_LINES = 45
 STRIPE_SK   = os.environ.get("STRIPE_SECRET_KEY", "")
 PRICE_ID    = os.environ.get("STRIPE_PRICE_ID", "")
@@ -303,7 +314,11 @@ _rate_hits = {"ip": {}, "addr": {}}
 #: a failed upload must not meet a 429 before he meets the mail throttle) and
 #: is expressed in requests, not mails, so a caller who leaves the email field
 #: blank is still counted.
-RUN_PER_IP_HOUR = int(os.environ.get("SHOP_RUN_PER_IP_HOUR", "6"))
+# TEMPORARY, 2026-08-26, for the ceiling measurement only. Six accepted runs
+# is not enough to binary-search a ceiling whose probes take minutes each, and
+# a 429 is not a data point. PUT BACK TO 6 in the same session. If you are
+# reading 40 here on a later date, it was left open by mistake.
+RUN_PER_IP_HOUR = int(os.environ.get("SHOP_RUN_PER_IP_HOUR", "40"))
 _run_lock = threading.Lock()
 _run_hits = {}
 
