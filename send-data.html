@@ -2,7 +2,7 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <title>Send one file, get one report — Lattice24</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Drop a CSV you already log. Get dollar value saved + sensor report. Free first file.">
+<meta name="description" content="Drop a CSV you already log. Get a sensor and process report with every control on the face of it. Free first file.">
 <style>
  :root{--blood:#C4121F;--forest:#0F4C2F;--ink:#F2EDE8;--soft:#C9B8B0;--faint:#8A7870;--line:rgba(196,18,31,.28);--panel:rgba(18,14,14,.72)}
  *{box-sizing:border-box}html,body{margin:0}
@@ -42,8 +42,8 @@
    <a class="brand" href="/"><span class="mark"><u><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></u></span>LATTICE24</a>
    <nav class="nav"><a href="/">Home</a><a href="/audit.html">Audit</a></nav>
  </div>
- <h1>Drop a <b>CSV</b>. Get <b>$ saved</b> + report.</h1>
- <p class="sub">One file you already log. We return dollar value saved + sensor drift report. Free first file. Notes quoted back.</p>
+ <h1>Drop a <b>CSV</b>. Get a <b>report you can check</b>.</h1>
+ <p class="sub">One file you already log. We return which channels carry signal, every control that could have killed the result, and an honest null when there is nothing there. Free first file. Notes quoted back.</p>
 
  <label class="drop" id="drop">
    <input type="file" id="file" accept=".csv,.txt,.dat">
@@ -52,7 +52,7 @@
    <div id="fname" style="margin-top:8px;font:600 .82rem/1 ui-monospace,Menlo,monospace;color:var(--blood)"></div>
  </label>
 
- <div class="dollar" id="dollar" style="display:none">Estimated saved: <b id="dval">$0</b> <span style="font-size:.78rem;color:var(--soft)">+ sensor report (16 channels)</span></div>
+ <div class="dollar" id="dollar" style="display:none"><b id="dval"></b> <span style="font-size:.78rem;color:var(--soft)">Sensor report, up to 16 channels. We do not quote a dollar figure from a file alone &mdash; to price a loss we need the metered column, its unit, your price per unit and the hours covered, and the report shows that arithmetic in full.</span></div>
 
  <textarea id="notes" class="field" rows="2" placeholder="Notes — anything that matters (e.g. Channel 3 post-filter, batch 7 shutdown) — quoted in report"></textarea>
 
@@ -71,14 +71,14 @@
 </div>
 <script>
 const drop=document.getElementById('drop'), file=document.getElementById('file'), fname=document.getElementById('fname'), dollar=document.getElementById('dollar'), dval=document.getElementById('dval'), notes=document.getElementById('notes'), send=document.getElementById('send'), mail=document.getElementById('mail');
-function fmt(n){return '$'+n.toLocaleString(undefined,{maximumFractionDigits:0})}
-function estimate(file){ // fake $ from rows*cols heuristic — replaced by real calc on server, but shows value instantly
-  const rows=Math.min(8000, Math.max(300, (file.size||3000)/18|0));
-  const kwh=rows*0.018; // ~0.018 kWh per 1000 rows placeholder
-  const price=0.14; // $/kWh blended
-  const ecr=0.72; // conservative
-  return Math.round(kwh*price*ecr*1.2);
-}
+// REMOVED 2026-08-26. `estimate(file)` returned a dollar figure computed from
+// file.size and nothing else -- its own comment read "fake $ from rows*cols
+// heuristic". A file of pure random noise produced "Estimated saved: $N", and
+// the same file zipped to half the size produced half the number. No dollar
+// figure is shown here any more. The report prices a loss only from a metered
+// column, a unit, a price and a period that the customer supplies, and prints
+// the arithmetic; with any of those missing it prints no figure at all.
+// See ~/lattice24_machine/value_note.py.
 drop.addEventListener('click',()=>file.click());
 drop.addEventListener('dragover',e=>{e.preventDefault();drop.style.borderColor='var(--blood)'});
 drop.addEventListener('dragleave',()=>drop.style.borderColor='');
@@ -87,8 +87,7 @@ file.addEventListener('change',onFile);
 function onFile(){
   const f=file.files[0]; if(!f) return;
   fname.textContent=f.name+' • '+(f.size/1024).toFixed(1)+' KB';
-  const v=estimate(f);
-  dval.textContent=fmt(v);
+  dval.textContent='File received.';
   dollar.style.display='block';
   // update mailto with notes
   updMail();
