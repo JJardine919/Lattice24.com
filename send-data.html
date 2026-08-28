@@ -20,7 +20,7 @@
  h1{margin:0;font-size:clamp(1.6rem,4vw,2.2rem);line-height:1;text-align:center;letter-spacing:-.02em}
  h1 b{color:var(--blood)}
  .sub{margin:0;text-align:center;color:var(--soft);font-size:.95rem}
- .drop{border:2px dashed rgba(196,18,31,.45);background:rgba(18,14,14,.72);padding:18px;text-align:center;backdrop-filter:blur(8px);box-shadow:0 0 18px rgba(196,18,31,.12);cursor:pointer;transition:.15s}
+ .drop{display:block;text-decoration:none;color:inherit;border:2px dashed rgba(196,18,31,.45);background:rgba(18,14,14,.72);padding:18px;text-align:center;backdrop-filter:blur(8px);box-shadow:0 0 18px rgba(196,18,31,.12);cursor:pointer;transition:.15s}
  .drop:hover{border-color:var(--blood);box-shadow:0 0 22px rgba(196,18,31,.22);transform:translateY(-1px)}
  .drop strong{color:var(--blood)}
  .drop input{display:none}
@@ -45,22 +45,16 @@
  <h1>Drop a <b>CSV</b>. Get a <b>report you can check</b>.</h1>
  <p class="sub">One file you already log. We return which channels carry signal, every control that could have killed the result, and an honest null when there is nothing there. Free first file. Notes quoted back.</p>
 
- <label class="drop" id="drop">
-   <input type="file" id="file" accept=".csv,.txt,.dat">
-   <div><strong>Drop CSV here</strong> or click to choose</div>
-   <div style="font-size:.82rem;color:var(--faint);margin-top:4px">Historical is fine, redacted is fine — one unit is enough</div>
-   <div id="fname" style="margin-top:8px;font:600 .82rem/1 ui-monospace,Menlo,monospace;color:var(--blood)"></div>
- </label>
-
- <div class="dollar" id="dollar" style="display:none"><b id="dval"></b> <span style="font-size:.78rem;color:var(--soft)">Sensor report, up to 16 channels. We do not quote a dollar figure from a file alone &mdash; to price a loss we need the metered column, its unit, your price per unit and the hours covered, and the report shows that arithmetic in full.</span></div>
-
- <textarea id="notes" class="field" rows="2" placeholder="Notes — anything that matters (e.g. Channel 3 post-filter, batch 7 shutdown) — quoted in report"></textarea>
+ <a class="drop" id="drop" href="https://lattice24-com.onrender.com/shop/upload.html">
+   <div><strong>Upload your CSV</strong> — takes you to the live uploader</div>
+   <div style="font-size:.82rem;color:var(--faint);margin-top:4px">Historical is fine, redacted is fine — one unit is enough. Runs there, report comes back to you.</div>
+ </a>
 
  <div class="row">
-   <a class="btn" href="#" id="send">→ Send file + notes</a>
+   <a class="btn" href="https://lattice24-com.onrender.com/shop/upload.html" id="send">→ Upload &amp; get report</a>
    <a class="btn btn--ghost" href="mailto:jjj101147@gmail.com?subject=Data%20for%20analysis" id="mail">jjj101147@gmail.com</a>
  </div>
- <p style="text-align:center;font-size:.82rem;color:var(--faint);margin:0">Reply comes by email. No call, no account. Sensitive? Tell us which columns/rows would be enough.</p>
+ <p style="text-align:center;font-size:.82rem;color:var(--faint);margin:0">Upload runs the real engine and emails/links your report. Trouble uploading, or the file's too big (5 MB cap)? Email it instead. No call, no account.</p>
 
  <details class="details"><summary>What you send / what comes back (30s)</summary>
    <p style="margin:8px 0 0"><strong>Rows in time order</strong> — a few hundred min, a few thousand better. <strong>One column per channel</strong> (16 natural). Optional run/batch + ok/fault label. No VPN, no agent — file one way, report back.</p>
@@ -69,36 +63,3 @@
 
  <footer>LATTICE24 • JAMES JARDINE • ORCID 0009-0004-9073-7192 • <a href="/">Home</a></footer>
 </div>
-<script>
-const drop=document.getElementById('drop'), file=document.getElementById('file'), fname=document.getElementById('fname'), dollar=document.getElementById('dollar'), dval=document.getElementById('dval'), notes=document.getElementById('notes'), send=document.getElementById('send'), mail=document.getElementById('mail');
-// REMOVED 2026-08-26. `estimate(file)` returned a dollar figure computed from
-// file.size and nothing else -- its own comment read "fake $ from rows*cols
-// heuristic". A file of pure random noise produced "Estimated saved: $N", and
-// the same file zipped to half the size produced half the number. No dollar
-// figure is shown here any more. The report prices a loss only from a metered
-// column, a unit, a price and a period that the customer supplies, and prints
-// the arithmetic; with any of those missing it prints no figure at all.
-// See ~/lattice24_machine/value_note.py.
-drop.addEventListener('click',()=>file.click());
-drop.addEventListener('dragover',e=>{e.preventDefault();drop.style.borderColor='var(--blood)'});
-drop.addEventListener('dragleave',()=>drop.style.borderColor='');
-drop.addEventListener('drop',e=>{e.preventDefault();file.files=e.dataTransfer.files; onFile()});
-file.addEventListener('change',onFile);
-function onFile(){
-  const f=file.files[0]; if(!f) return;
-  fname.textContent=f.name+' • '+(f.size/1024).toFixed(1)+' KB';
-  dval.textContent='File received.';
-  dollar.style.display='block';
-  // update mailto with notes
-  updMail();
-}
-function updMail(){
-  const body=(notes.value.trim()? 'Notes:\n'+notes.value.trim()+'\n\n':'')+'[CSV attached: '+(file.files[0]?file.files[0].name:'')+']';
-  let href='mailto:jjj101147@gmail.com?subject='+encodeURIComponent('Data for analysis');
-  if(body.trim()) href+='&body='+encodeURIComponent(body);
-  mail.href=href;
-  send.href=href;
-}
-notes.addEventListener('input',updMail);
-send.addEventListener('click',e=>{e.preventDefault(); updMail(); location.href=mail.href;});
-</script>
